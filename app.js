@@ -2068,6 +2068,7 @@ class ProceduralAudioEngine {
   attachWaveformCanvas(canvas) {
     if (!canvas) return;
     this.activeCanvases.add(canvas);
+    this.setupWaveformScrubber(canvas);
     if (this.isPlaying && !this.animationFrameId) {
       this.startWaveformLoop();
     } else if (!this.isPlaying) {
@@ -2078,6 +2079,100 @@ class ProceduralAudioEngine {
   detachWaveformCanvas(canvas) {
     if (!canvas) return;
     this.activeCanvases.delete(canvas);
+  }
+
+  seek(timeRatio) {
+    const clamped = Math.max(0, Math.min(1, timeRatio));
+    if (this.audioElement) {
+      try {
+        const dur = this.audioElement.duration || 15;
+        const targetTime = clamped * dur;
+        this.audioElement.currentTime = targetTime;
+        this.remainingSeconds = Math.max(0, Math.round(dur - targetTime));
+      } catch (e) {}
+    } else {
+      this.remainingSeconds = Math.max(0, Math.round(15 * (1 - clamped)));
+    }
+    const formatted = `0:${String(Math.max(0, this.remainingSeconds)).padStart(2, "0")}`;
+    if (this.onTick) this.onTick(this.remainingSeconds);
+    const miniTimer = document.querySelector("#mini-player-timer");
+    if (miniTimer) miniTimer.textContent = formatted;
+    const modalTimer = document.querySelector("#modal-cue-timer");
+    if (modalTimer) modalTimer.textContent = formatted;
+  }
+
+  setupWaveformScrubber(canvas) {
+    if (!canvas || canvas.dataset.scrubberInit) return;
+    canvas.dataset.scrubberInit = "true";
+
+    const wrap = canvas.parentElement;
+    let tooltip = wrap ? wrap.querySelector(".waveform-scrub-tooltip") : null;
+    if (wrap && !tooltip) {
+      tooltip = document.createElement("div");
+      tooltip.className = "waveform-scrub-tooltip";
+      wrap.appendChild(tooltip);
+    }
+
+    const handleScrub = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      this.seek(ratio);
+    };
+
+    let isDragging = false;
+
+    canvas.addEventListener("mousedown", (e) => {
+      isDragging = true;
+      handleScrub(e);
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      if (isDragging) {
+        handleScrub(e);
+      }
+    });
+
+    window.addEventListener("mouseup", () => {
+      if (isDragging) isDragging = false;
+    });
+
+    canvas.addEventListener("touchstart", (e) => {
+      if (e.touches && e.touches[0]) {
+        isDragging = true;
+        const rect = canvas.getBoundingClientRect();
+        const ratio = Math.max(0, Math.min(1, (e.touches[0].clientX - rect.left) / rect.width));
+        this.seek(ratio);
+      }
+    }, { passive: true });
+
+    canvas.addEventListener("touchmove", (e) => {
+      if (isDragging && e.touches && e.touches[0]) {
+        const rect = canvas.getBoundingClientRect();
+        const ratio = Math.max(0, Math.min(1, (e.touches[0].clientX - rect.left) / rect.width));
+        this.seek(ratio);
+      }
+    }, { passive: true });
+
+    canvas.addEventListener("touchend", () => {
+      isDragging = false;
+    });
+
+    canvas.addEventListener("mousemove", (e) => {
+      if (!tooltip) return;
+      const rect = canvas.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      const dur = (this.audioElement && this.audioElement.duration) ? Math.round(this.audioElement.duration) : 15;
+      const scrubSec = Math.round(ratio * dur);
+      tooltip.textContent = `0:${String(scrubSec).padStart(2, "0")} / 0:${String(dur).padStart(2, "0")}`;
+      tooltip.style.left = `${(e.clientX - rect.left)}px`;
+      tooltip.classList.add("visible");
+    });
+
+    canvas.addEventListener("mouseleave", () => {
+      if (!isDragging && tooltip) {
+        tooltip.classList.remove("visible");
+      }
+    });
   }
 
   startWaveformLoop() {
@@ -2165,6 +2260,28 @@ class ProceduralAudioEngine {
           ctx.fillStyle = isDark ? "rgba(255, 118, 96, 0.38)" : "rgba(217, 119, 54, 0.32)";
           ctx.fillRect(j * (barWidth + 2), height - barHeight, barWidth, barHeight);
         }
+
+        // B3: Playhead scrubber needle
+        let progress = 0;
+        if (this.audioElement && this.audioElement.duration) {
+          progress = this.audioElement.currentTime / this.audioElement.duration;
+        } else {
+          progress = (15 - this.remainingSeconds) / 15;
+        }
+        progress = Math.max(0, Math.min(1, progress));
+        const playheadX = progress * width;
+
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(playheadX, 0);
+        ctx.lineTo(playheadX, height);
+        ctx.stroke();
+
+        ctx.fillStyle = isDark ? "#ff684a" : "#df503a";
+        ctx.beginPath();
+        ctx.arc(playheadX, height / 2, 3.5, 0, Math.PI * 2);
+        ctx.fill();
       });
     };
 
@@ -2529,6 +2646,29 @@ function openSoundStory(sound) {
     ? sound.soundTwins.map((t) => `<span class="twin-pill">✦ ${t}</span>`).join(" ")
     : "None listed";
 
+  const twinName = sound.soundTwins && sound.soundTwins.length ? sound.soundTwins[0] : null;
+  let twinSound = null;
+  if (twinName) {
+    twinSound = catalog.find(
+      (s) => s.id !== sound.id && (s.title.toLowerCase().includes(twinName.toLowerCase()) || twinName.toLowerCase().includes(s.title.toLowerCase()))
+    );
+    if (!twinSound) {
+      twinSound = {
+        id: `twin-${sound.id}`,
+        title: twinName,
+        artist: "Underground Twin",
+        language: sound.language || "Indie",
+        scene: `${sound.scene || "Regional"} Underground`,
+        stage: "Underground Twin",
+        energy: sound.energy || "soft",
+        tone: "violet",
+        hook: sound.hook || "0:15 — 0:30",
+        idea: `Underground counterpart to ${sound.title}`,
+        isDynamic: false
+      };
+    }
+  }
+
   const captionHook = `Found this before it peaks 🕊️ // ${sound.title} by ${sound.artist}`;
   const matchedCorridor = typeof soundRoutes !== "undefined" ? soundRoutes.find((r) => r.soundId === sound.id) : null;
   const corridorAction = matchedCorridor 
@@ -2622,18 +2762,45 @@ function openSoundStory(sound) {
             <span class="cue-timer-display" id="modal-cue-timer">0:15</span>
           </div>
           <p class="cue-legal-note">
-            <strong>✦ Official Master Audio Stream:</strong> Licensed 30-second audio preview of "${sound.title}". Full uncompressed master streams outbound on Spotify & Apple Music.
+            <strong>✦ Official Master Audio Stream:</strong> Licensed 30-second audio preview of "${sound.title}". Click anywhere on the waveform to scrub.
           </p>
         </div>
       </div>
+
       <div class="story-block">
         <span class="story-label">Non-Cliché Creator Idea</span>
         <p class="idea-text">${sound.idea}</p>
       </div>
-      <div class="story-block">
-        <span class="story-label">Sound Twins (Aesthetic Counterparts)</span>
-        <p class="twins-text">${twinBadges}</p>
+
+      <!-- B2: Sound Twins A/B Audio Comparator -->
+      <div class="story-block sound-twins-comparator">
+        <div class="ab-comparator-header">
+          <span class="ab-comparator-title">✦ Sound Twins · A/B Audio Comparator</span>
+          <span class="ab-active-pill" id="ab-active-status">✦ Select Track to Compare</span>
+        </div>
+        <p class="twins-text" style="margin-bottom: 12px;">${twinBadges}</p>
+        ${twinSound ? `
+        <div class="ab-tracks-grid">
+          <div class="ab-track-card ${audioEngine.currentSoundId === sound.id ? 'is-active' : ''}" id="ab-card-a">
+            <span class="ab-track-badge">Track A · Original</span>
+            <strong class="ab-track-title">${sound.title}</strong>
+            <p class="ab-track-artist">${sound.artist} · ${sound.scene || sound.language}</p>
+            <button type="button" class="ab-audition-btn ${audioEngine.currentSoundId === sound.id ? 'is-playing' : ''}" id="ab-audition-a">
+              ${audioEngine.currentSoundId === sound.id ? '■ Stop Track A' : '▶ Audition Track A'}
+            </button>
+          </div>
+
+          <div class="ab-track-card ${audioEngine.currentSoundId === twinSound.id ? 'is-active' : ''}" id="ab-card-b">
+            <span class="ab-track-badge">Track B · Underground Twin</span>
+            <strong class="ab-track-title">${twinSound.title}</strong>
+            <p class="ab-track-artist">${twinSound.artist} · ${twinSound.scene || 'Underground'}</p>
+            <button type="button" class="ab-audition-btn ${audioEngine.currentSoundId === twinSound.id ? 'is-playing' : ''}" id="ab-audition-b">
+              ${audioEngine.currentSoundId === twinSound.id ? '■ Stop Track B' : '▶ Audition Track B'}
+            </button>
+          </div>
+        </div>` : ''}
       </div>
+
       <div class="story-actions">
         <a class="ig-link" href="https://www.instagram.com/reels/audio/?query=${encodeURIComponent(sound.title + ' ' + sound.artist)}" target="_blank" rel="noopener noreferrer">Instagram Reel Audio ↗</a>
         <a class="listen-link" href="${sound.outboundUrl || `https://open.spotify.com/search/${encodeURIComponent(sound.title + ' ' + sound.artist)}`}" target="_blank" rel="noopener noreferrer">Listen on Spotify ↗</a>
@@ -2676,57 +2843,116 @@ function openSoundStory(sound) {
     modalSaveBtn.textContent = updated ? `✓ Saved in "${activeBoard}"` : `＋ Save to "${activeBoard}"`;
   });
 
-  // Modal hook cue audio player
+  // Modal hook cue audio player & A/B synchronization
   const modalCuePlayBtn = modalContent.querySelector("#modal-cue-play-btn");
   const modalWaveform = modalContent.querySelector("#modal-cue-waveform");
   const modalTimer = modalContent.querySelector("#modal-cue-timer");
 
   if (modalWaveform && typeof modalWaveform.getContext === "function") {
-    const wCtx = modalWaveform.getContext("2d");
-    if (wCtx) {
-      wCtx.beginPath();
-      wCtx.moveTo(0, modalWaveform.height / 2);
-      wCtx.lineTo(modalWaveform.width, modalWaveform.height / 2);
-      wCtx.strokeStyle = "#ded6c7";
-      wCtx.lineWidth = 1.5;
-      wCtx.stroke();
-    }
+    audioEngine.drawWaveform(modalWaveform);
   }
 
-  if (modalCuePlayBtn) {
-    if (audioEngine.isPlaying && audioEngine.currentSoundId === sound.id) {
-      modalCuePlayBtn.classList.add("is-playing");
-      modalCuePlayBtn.innerHTML = '<span class="play-icon">■</span> Stop Song Preview';
-      if (modalTimer) modalTimer.textContent = `0:${String(audioEngine.remainingSeconds).padStart(2, "0")}`;
-      if (modalWaveform) audioEngine.drawWaveform(modalWaveform);
+  const updateABUI = () => {
+    const cardA = modalContent.querySelector("#ab-card-a");
+    const cardB = modalContent.querySelector("#ab-card-b");
+    const btnA = modalContent.querySelector("#ab-audition-a");
+    const btnB = modalContent.querySelector("#ab-audition-b");
+    const statusPill = modalContent.querySelector("#ab-active-status");
+
+    const isPlayingA = audioEngine.isPlaying && audioEngine.currentSoundId === sound.id;
+    const isPlayingB = twinSound && audioEngine.isPlaying && audioEngine.currentSoundId === twinSound.id;
+
+    if (cardA) cardA.classList.toggle("is-active", isPlayingA);
+    if (cardB) cardB.classList.toggle("is-active", isPlayingB);
+    if (btnA) {
+      btnA.classList.toggle("is-playing", isPlayingA);
+      btnA.textContent = isPlayingA ? "■ Stop Track A" : "▶ Audition Track A";
+    }
+    if (btnB) {
+      btnB.classList.toggle("is-playing", isPlayingB);
+      btnB.textContent = isPlayingB ? "■ Stop Track B" : "▶ Audition Track B";
+    }
+    if (statusPill) {
+      if (isPlayingA) statusPill.textContent = `✦ Auditioning Track A (${sound.title})`;
+      else if (isPlayingB) statusPill.textContent = `✦ Auditioning Track B (${twinSound.title})`;
+      else statusPill.textContent = "✦ Select Track to Compare";
     }
 
-    modalCuePlayBtn.addEventListener("click", () => {
+    if (modalCuePlayBtn) {
+      modalCuePlayBtn.classList.toggle("is-playing", isPlayingA);
+      modalCuePlayBtn.innerHTML = isPlayingA 
+        ? '<span class="play-icon">■</span> Stop Song Preview' 
+        : '<span class="play-icon">▶</span> Play Song Preview';
+    }
+  };
+
+  const playTrackA = () => {
+    audioEngine.playHookCue(
+      sound,
+      (sec) => {
+        if (modalTimer) modalTimer.textContent = `0:${String(Math.max(0, sec)).padStart(2, "0")}`;
+      },
+      () => {
+        updateABUI();
+        if (modalTimer) modalTimer.textContent = "0:15";
+      }
+    );
+    if (modalWaveform) audioEngine.drawWaveform(modalWaveform);
+    updateABUI();
+  };
+
+  const playTrackB = () => {
+    if (!twinSound) return;
+    audioEngine.playHookCue(
+      twinSound,
+      (sec) => {
+        if (modalTimer) modalTimer.textContent = `0:${String(Math.max(0, sec)).padStart(2, "0")}`;
+      },
+      () => {
+        updateABUI();
+        if (modalTimer) modalTimer.textContent = "0:15";
+      }
+    );
+    if (modalWaveform) audioEngine.drawWaveform(modalWaveform);
+    updateABUI();
+  };
+
+  const btnA = modalContent.querySelector("#ab-audition-a");
+  if (btnA) {
+    btnA.addEventListener("click", () => {
       if (audioEngine.isPlaying && audioEngine.currentSoundId === sound.id) {
         audioEngine.stop();
-        modalCuePlayBtn.classList.remove("is-playing");
-        modalCuePlayBtn.innerHTML = '<span class="play-icon">▶</span> Play Song Preview';
-        if (modalTimer) modalTimer.textContent = "0:15";
+        updateABUI();
       } else {
-        modalCuePlayBtn.classList.add("is-playing");
-        modalCuePlayBtn.innerHTML = '<span class="play-icon">■</span> Stop Song Preview';
-        audioEngine.playHookCue(
-          sound,
-          (sec) => {
-            if (modalTimer) modalTimer.textContent = `0:${String(sec).padStart(2, "0")}`;
-          },
-          () => {
-            if (modalCuePlayBtn) {
-              modalCuePlayBtn.classList.remove("is-playing");
-              modalCuePlayBtn.innerHTML = '<span class="play-icon">▶</span> Play Song Preview';
-            }
-            if (modalTimer) modalTimer.textContent = "0:15";
-          }
-        );
-        if (modalWaveform) audioEngine.drawWaveform(modalWaveform);
+        playTrackA();
       }
     });
   }
+
+  const btnB = modalContent.querySelector("#ab-audition-b");
+  if (btnB) {
+    btnB.addEventListener("click", () => {
+      if (twinSound && audioEngine.isPlaying && audioEngine.currentSoundId === twinSound.id) {
+        audioEngine.stop();
+        updateABUI();
+      } else {
+        playTrackB();
+      }
+    });
+  }
+
+  if (modalCuePlayBtn) {
+    modalCuePlayBtn.addEventListener("click", () => {
+      if (audioEngine.isPlaying && audioEngine.currentSoundId === sound.id) {
+        audioEngine.stop();
+        updateABUI();
+      } else {
+        playTrackA();
+      }
+    });
+  }
+
+  updateABUI();
 
   modalOverlay.classList.remove("hidden");
   document.body.style.overflow = "hidden";
@@ -2945,8 +3171,60 @@ async function searchSounds(query) {
   });
 }
 
+// B1: Midnight Studio Theme Controller
+function initThemeController() {
+  const toggleBtn = document.querySelector("#theme-toggle-btn");
+  const updateToggleBtn = (theme) => {
+    if (!toggleBtn) return;
+    const isMidnight = theme === "midnight";
+    const icon = toggleBtn.querySelector(".theme-icon");
+    const label = toggleBtn.querySelector(".theme-label");
+    if (icon) icon.textContent = isMidnight ? "☀️" : "🌙";
+    if (label) label.textContent = isMidnight ? "Paper" : "Midnight";
+    toggleBtn.setAttribute("aria-label", isMidnight ? "Switch to Paper Editorial Theme" : "Switch to Midnight Studio Theme");
+    toggleBtn.title = isMidnight ? "Switch to Paper Editorial (Alt+T)" : "Switch to Midnight Studio (Alt+T)";
+  };
+
+  const currentTheme = document.documentElement.getAttribute("data-theme") || "paper";
+  updateToggleBtn(currentTheme);
+
+  const toggleTheme = () => {
+    const active = document.documentElement.getAttribute("data-theme") === "midnight" ? "midnight" : "paper";
+    const nextTheme = active === "midnight" ? "paper" : "midnight";
+    if (nextTheme === "midnight") {
+      document.documentElement.setAttribute("data-theme", "midnight");
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+    }
+    localStorage.setItem("mehfil-theme", nextTheme);
+    updateToggleBtn(nextTheme);
+    showToast(nextTheme === "midnight" ? "🌙 Midnight Studio theme active" : "☀️ Paper Editorial theme active");
+
+    // Force redraw of any active waveform canvases to adapt stroke colors
+    if (typeof audioEngine !== "undefined" && audioEngine.activeCanvases) {
+      audioEngine.activeCanvases.forEach((c) => {
+        if (!audioEngine.isPlaying) audioEngine.drawIdleWaveform(c);
+      });
+    }
+  };
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener("click", toggleTheme);
+  }
+
+  // Keyboard shortcut: Alt+T or Option+T
+  document.addEventListener("keydown", (e) => {
+    if (e.altKey && e.key.toLowerCase() === "t") {
+      e.preventDefault();
+      toggleTheme();
+    }
+  });
+}
+
 // 11. Initial Event Listeners
 document.addEventListener("DOMContentLoaded", () => {
+  initThemeController();
+
   if (typeof audioEngine !== "undefined" && audioEngine.setupMiniPlayer) {
     audioEngine.setupMiniPlayer();
   }

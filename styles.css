@@ -4632,6 +4632,301 @@ footer a {
   }
 }
 
+/* ==========================================================================
+   PHASE B: MIDNIGHT STUDIO DARK THEME, A/B AUDIO & WAVEFORM SCRUBBER
+   ========================================================================== */
+
+/* B1: Midnight Studio Theme Variables */
+[data-theme="midnight"] {
+  --paper: #121114;
+  --paper-card: #1b191e;
+  --ink: #fbf7ee;
+  --muted: #a49d94;
+  --line: rgba(255, 255, 255, 0.14);
+  --line-strong: #ded6c7;
+  --accent: #ff684a;
+  --accent-light: rgba(255, 104, 74, 0.18);
+  --peach: #f5956d;
+  --violet: #bda6e8;
+  --moss: #a0b884;
+  --amber: #f2c76b;
+  --red: #e6766e;
+  --blue: #8ebdcf;
+  --rose: #f0aab7;
+  --gold: #e2be60;
+}
+
+[data-theme="midnight"] body {
+  background: #121114;
+  color: #fbf7ee;
+}
+
+[data-theme="midnight"] .topbar {
+  background: rgba(18, 17, 20, 0.94);
+  border-bottom-color: rgba(255, 255, 255, 0.14);
+}
+
+[data-theme="midnight"] .prompt-box,
+[data-theme="midnight"] .sound-card,
+[data-theme="midnight"] .today-card,
+[data-theme="midnight"] .radar-card,
+[data-theme="midnight"] .radar-header-card,
+[data-theme="midnight"] .scene-card,
+[data-theme="midnight"] .route-card,
+[data-theme="midnight"] .drawer,
+[data-theme="midnight"] .modal-card,
+[data-theme="midnight"] .taste-passport-card,
+[data-theme="midnight"] .share-card-modal,
+[data-theme="midnight"] .submit-dialog,
+[data-theme="midnight"] .spotify-sync-card,
+[data-theme="midnight"] .claim-artist-modal {
+  background: #1c1a1f;
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: 6px 8px 0 rgba(0, 0, 0, 0.65);
+}
+
+[data-theme="midnight"] .sound-card:hover,
+[data-theme="midnight"] .today-card:hover,
+[data-theme="midnight"] .scene-card:hover {
+  border-color: var(--accent);
+  box-shadow: 6px 8px 0 var(--accent);
+}
+
+[data-theme="midnight"] .chip,
+[data-theme="midnight"] .idea-preset-chip,
+[data-theme="midnight"] .edition-pill,
+[data-theme="midnight"] .board-tab,
+[data-theme="midnight"] .scene-filter-pill,
+[data-theme="midnight"] .radar-filter-pill,
+[data-theme="midnight"] .route-pill {
+  background: #252229;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #ded6c7;
+}
+
+[data-theme="midnight"] .chip.selected,
+[data-theme="midnight"] .edition-pill.active,
+[data-theme="midnight"] .board-tab.active,
+[data-theme="midnight"] .scene-filter-pill.active,
+[data-theme="midnight"] .radar-filter-pill.active,
+[data-theme="midnight"] .route-pill.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+[data-theme="midnight"] .idea-field-wrap,
+[data-theme="midnight"] .search-input-wrap,
+[data-theme="midnight"] .board-input-wrap input,
+[data-theme="midnight"] .form-group input,
+[data-theme="midnight"] .form-group select,
+[data-theme="midnight"] .form-group textarea,
+[data-theme="midnight"] #claim-artist-select,
+[data-theme="midnight"] #radar-artist-select {
+  background: #151418;
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #fbf7ee;
+}
+
+[data-theme="midnight"] #reel-idea-input,
+[data-theme="midnight"] #sound-search-input {
+  color: #fff;
+}
+
+[data-theme="midnight"] .story-block,
+[data-theme="midnight"] .blueprint-action-block,
+[data-theme="midnight"] .sound-route-block,
+[data-theme="midnight"] .hook-box,
+[data-theme="midnight"] .cue-player-box {
+  background: #232028;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="midnight"] .search-box-modal {
+  background: #1c1a1f;
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: 12px 14px 0 rgba(0, 0, 0, 0.8);
+}
+
+[data-theme="midnight"] .search-row:hover {
+  background: #27242c;
+}
+
+/* Theme Switcher Button */
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--paper-card);
+  border: 1.5px solid var(--line-strong);
+  color: var(--ink);
+  padding: 6px 12px;
+  font: 600 11px "DM Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 2px 2px 0 var(--line-strong);
+}
+
+.theme-toggle-btn:hover {
+  background: var(--line-strong);
+  color: var(--paper);
+  transform: translateY(-1px);
+}
+
+.theme-toggle-btn .theme-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+/* B2: Sound Twin A/B Audio Switcher Styles */
+.sound-twins-comparator {
+  margin-top: 14px;
+  padding: 14px;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1.5px dashed var(--line);
+  border-radius: 4px;
+}
+
+[data-theme="midnight"] .sound-twins-comparator {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.ab-comparator-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.ab-comparator-title {
+  font: 700 11px "DM Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--accent);
+}
+
+.ab-active-pill {
+  font: 600 10px "DM Mono", monospace;
+  background: var(--accent-light);
+  color: var(--accent);
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--accent);
+}
+
+.ab-tracks-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 600px) {
+  .ab-tracks-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ab-track-card {
+  border: 1.5px solid var(--line);
+  background: var(--paper-card);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.ab-track-card.is-active {
+  border-color: var(--accent);
+  box-shadow: 3px 3px 0 var(--accent);
+}
+
+.ab-track-badge {
+  font: 700 9px "DM Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+
+.ab-track-card.is-active .ab-track-badge {
+  color: var(--accent);
+}
+
+.ab-track-title {
+  font-family: "Playfair Display", serif;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.ab-track-artist {
+  font: 11px "DM Mono", monospace;
+  color: var(--muted);
+  margin: 0;
+}
+
+.ab-audition-btn {
+  margin-top: 4px;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  font: 600 11px "DM Mono", monospace;
+  padding: 5px 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.ab-audition-btn:hover,
+.ab-audition-btn.is-playing {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* B3: Interactive Waveform Audio Scrubber Styles */
+.cue-waveform-wrap,
+.mini-player-waveform-wrap {
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+}
+
+.cue-waveform-canvas,
+#mini-player-waveform {
+  display: block;
+  cursor: pointer;
+}
+
+.waveform-scrub-tooltip {
+  position: absolute;
+  top: -24px;
+  background: #181818;
+  color: #fbf7ee;
+  font: 10px "DM Mono", monospace;
+  padding: 2px 6px;
+  border-radius: 3px;
+  pointer-events: none;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 20;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.waveform-scrub-tooltip.visible {
+  opacity: 1;
+}
+
 
 
 

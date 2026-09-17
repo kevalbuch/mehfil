@@ -9,6 +9,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,400&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet" />
+    <script>
+      (function() {
+        const saved = localStorage.getItem("mehfil-theme");
+        if (saved === "midnight") {
+          document.documentElement.setAttribute("data-theme", "midnight");
+        }
+      })();
+    </script>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -27,6 +35,9 @@
         <a class="nav-link" href="#vault">Your vault <span class="saved-count">0</span></a>
       </nav>
       <div class="topbar-right">
+        <button class="theme-toggle-btn" id="theme-toggle-btn" type="button" aria-label="Toggle Midnight Studio Theme" title="Toggle Midnight Theme (Alt+T)">
+          <span class="theme-icon">🌙</span> <span class="theme-label">Midnight</span>
+        </button>
         <button class="top-submit-btn" id="open-submit-btn" aria-label="Submit Sound">＋ Submit</button>
         <a class="top-search-btn" href="#search" aria-label="Quick search">⌕ <span>⌘K</span></a>
       </div>
