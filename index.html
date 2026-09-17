@@ -428,6 +428,7 @@
     <!-- Sound Card Template for Post Match -->
     <template id="sound-card-template">
       <article class="sound-card">
+        <div class="card-specular-glare" aria-hidden="true"></div>
         <div class="art">
           <span class="art-number"></span>
           <button class="save" aria-label="Save sound">＋</button>
@@ -694,6 +695,14 @@
     <!-- Floating Toast Notification -->
     <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
-    <script src="app.js?v=3.0"></script>
+    <!-- GSAP Core & ScrollTrigger (GreenSock Animation Platform) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <!-- Lenis Smooth Momentum Scroll -->
+    <script src="https://unpkg.com/lenis@1.1.18/dist/lenis.min.js"></script>
+    <!-- Motion (Framer Motion Vanilla Engine by Matt Perry) -->
+    <script src="https://cdn.jsdelivr.net/npm/motion@latest/dist/motion.js"></script>
+
+    <script src="app.js?v=3.1"></script>
   </body>
 </html>

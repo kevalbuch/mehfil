@@ -1795,11 +1795,19 @@ class ProceduralAudioEngine {
     this.onTick = onTick;
     this.onStop = onStop;
 
-    // Update and display bottom mini-player
+    // Update and display bottom mini-player with spring physics
     const miniPlayer = document.querySelector("#mini-player-bar");
     if (miniPlayer) {
+      const wasHidden = miniPlayer.classList.contains("hidden");
       miniPlayer.classList.remove("hidden");
       document.body.classList.add("has-mini-player");
+      if (wasHidden && typeof gsap !== "undefined") {
+        gsap.fromTo(
+          miniPlayer,
+          { y: 80, opacity: 0, scale: 0.95 },
+          { y: 0, opacity: 1, scale: 1, duration: 0.65, ease: "back.out(1.4)", overwrite: "auto" }
+        );
+      }
       const titleEl = document.querySelector("#mini-player-title");
       const artistEl = document.querySelector("#mini-player-artist");
       const playBtn = document.querySelector("#mini-player-play-btn");
@@ -2616,6 +2624,18 @@ function renderSoundCardElements(sounds) {
 
     grid.append(card);
   });
+
+  // Apply 3D tilt physics & staggered entrance animations
+  const renderedCards = grid.querySelectorAll(".sound-card");
+  if (typeof apply3DCardPhysics === "function") {
+    apply3DCardPhysics(renderedCards);
+  }
+  if (typeof animateCardGridEntrance === "function") {
+    animateCardGridEntrance(renderedCards);
+  }
+  if (typeof initMagneticButtons === "function") {
+    initMagneticButtons();
+  }
 }
 
 async function renderMatchCards(customSounds = null) {
@@ -2788,6 +2808,14 @@ function renderTodayFeed(editionId = currentEdition) {
     el.querySelector(".view-story-btn").addEventListener("click", () => openSoundStory(sound));
     todayGrid.append(el);
   });
+
+  const todayCards = todayGrid.querySelectorAll(".today-card");
+  if (typeof apply3DCardPhysics === "function") {
+    apply3DCardPhysics(todayCards);
+  }
+  if (typeof animateCardGridEntrance === "function") {
+    animateCardGridEntrance(todayCards);
+  }
 }
 
 // 8. Sound Story Modal (With Sound Route Visualizer & One-Click Blueprint)
@@ -5808,6 +5836,357 @@ function exportRadarJSON() {
   });
 }
 
+// ==========================================================================
+// AWWWARDS KINETIC MOTION & PARALLAX ENGINE (GSAP 3.12 + LENIS + MOTION ONE)
+// ==========================================================================
+
+let lenisInstance = null;
+
+function initLenisSmoothScroll() {
+  if (typeof Lenis === "undefined") return;
+  try {
+    lenisInstance = new Lenis({
+      duration: 1.25,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      orientation: "vertical",
+      gestureOrientation: "vertical",
+      smoothWheel: true,
+      wheelMultiplier: 0.95,
+      touchMultiplier: 1.8,
+    });
+
+    if (typeof gsap !== "undefined" && typeof ScrollTrigger !== "undefined") {
+      gsap.registerPlugin(ScrollTrigger);
+      lenisInstance.on("scroll", ScrollTrigger.update);
+      gsap.ticker.add((time) => {
+        lenisInstance.raf(time * 1000);
+      });
+      gsap.ticker.lagSmoothing(0);
+    } else {
+      function raf(time) {
+        lenisInstance.raf(time);
+        requestAnimationFrame(raf);
+      }
+      requestAnimationFrame(raf);
+    }
+  } catch (err) {
+    console.warn("Smooth scroll initialization notice:", err);
+  }
+}
+
+function initHeroParallax() {
+  if (typeof gsap === "undefined") return;
+
+  try {
+    // 1. Cinematic Entry Sequence on page load
+    const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+
+    tl.from(".topbar", { y: -25, opacity: 0, duration: 0.75 })
+      .from(".marquee-ticker", { opacity: 0, duration: 0.4 }, "-=0.3")
+      .from(".live-status-pill", { y: 15, opacity: 0, duration: 0.55, ease: "back.out(1.6)" }, "-=0.25")
+      .from(".corner-edition", { opacity: 0, duration: 0.5 }, "-=0.35")
+      .from(".hero h1", { y: 35, opacity: 0, duration: 0.85, ease: "power4.out" }, "-=0.35")
+      .from(".hero-subtitle", { y: 15, opacity: 0, duration: 0.6 }, "-=0.45")
+      .from(".hero-sticker", { scale: 0, rotate: -25, opacity: 0, duration: 0.65, ease: "back.out(2)" }, "-=0.35")
+      .from(".hero-record-wrap", { scale: 0.85, rotate: -35, opacity: 0, duration: 1.1, ease: "power3.out" }, "-=0.7")
+      .from(".prompt-box", { y: 40, opacity: 0, duration: 0.8, ease: "power3.out" }, "-=0.6");
+
+    // 2. ScrollTrigger Parallax Depth
+    if (typeof ScrollTrigger !== "undefined") {
+      gsap.to(".hero-record-wrap", {
+        scrollTrigger: {
+          trigger: ".hero",
+          start: "top top",
+          end: "bottom top",
+          scrub: 1.2,
+        },
+        yPercent: -28,
+        rotation: 75,
+        scale: 0.92,
+        ease: "none",
+      });
+
+      gsap.to(".hero-ambient-glow", {
+        scrollTrigger: {
+          trigger: ".hero",
+          start: "top top",
+          end: "bottom top",
+          scrub: 1.5,
+        },
+        scale: 1.25,
+        opacity: 0.45,
+        ease: "none",
+      });
+
+      gsap.to(".hero-heading", {
+        scrollTrigger: {
+          trigger: ".hero",
+          start: "top top",
+          end: "bottom top",
+          scrub: 0.8,
+        },
+        yPercent: -15,
+        ease: "none",
+      });
+
+      gsap.to(".prompt-box", {
+        scrollTrigger: {
+          trigger: ".hero",
+          start: "top top",
+          end: "bottom top",
+          scrub: 0.5,
+        },
+        yPercent: -8,
+        ease: "none",
+      });
+    }
+  } catch (err) {
+    console.warn("Hero parallax init notice:", err);
+  }
+}
+
+function initVelocityMarquee() {
+  if (typeof ScrollTrigger === "undefined" || typeof gsap === "undefined") return;
+  const track = document.querySelector(".marquee-track");
+  if (!track) return;
+
+  try {
+    ScrollTrigger.create({
+      trigger: document.body,
+      start: "top top",
+      end: "bottom bottom",
+      onUpdate: (self) => {
+        const vel = self.getVelocity(); // px/s
+        if (Math.abs(vel) > 60) {
+          const boost = Math.min(Math.abs(vel) / 380, 3.2);
+          const dir = vel > 0 ? 1 : -1;
+          gsap.to(track, {
+            timeScale: 1 + boost * dir,
+            duration: 0.35,
+            ease: "power2.out",
+            overwrite: "auto",
+            onComplete: () => {
+              gsap.to(track, { timeScale: 1, duration: 1.2, ease: "power2.out" });
+            }
+          });
+        }
+      }
+    });
+  } catch (err) {
+    console.warn("Velocity marquee notice:", err);
+  }
+}
+
+function apply3DCardPhysics(cards) {
+  if (!cards || !cards.length) return;
+
+  cards.forEach((card) => {
+    if (card.dataset.physicsAttached) return;
+    card.dataset.physicsAttached = "true";
+
+    const specular = card.querySelector(".card-specular-glare");
+    const disc = card.querySelector(".vinyl-disc");
+
+    card.addEventListener("mousemove", (e) => {
+      const rect = card.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+
+      // Subtle 3D perspective tilt: max 6deg X, 8deg Y
+      const rotateX = ((y - centerY) / centerY) * -6;
+      const rotateY = ((x - centerX) / centerX) * 8;
+
+      if (typeof gsap !== "undefined") {
+        gsap.to(card, {
+          rotateX: rotateX,
+          rotateY: rotateY,
+          transformPerspective: 1200,
+          duration: 0.3,
+          ease: "power2.out",
+          overwrite: "auto",
+        });
+      }
+
+      if (specular) {
+        card.style.setProperty("--mouse-x", `${(x / rect.width) * 100}%`);
+        card.style.setProperty("--mouse-y", `${(y / rect.height) * 100}%`);
+      }
+    });
+
+    card.addEventListener("mouseenter", () => {
+      if (disc && typeof gsap !== "undefined") {
+        gsap.to(disc, {
+          x: 36,
+          rotation: 45,
+          duration: 0.6,
+          ease: "back.out(1.5)",
+          overwrite: "auto",
+        });
+      }
+    });
+
+    card.addEventListener("mouseleave", () => {
+      if (typeof gsap !== "undefined") {
+        gsap.to(card, {
+          rotateX: 0,
+          rotateY: 0,
+          duration: 0.65,
+          ease: "elastic.out(1, 0.45)",
+          overwrite: "auto",
+        });
+      }
+
+      if (disc && typeof gsap !== "undefined") {
+        gsap.to(disc, {
+          x: 0,
+          rotation: 0,
+          duration: 0.5,
+          ease: "power3.out",
+          overwrite: "auto",
+        });
+      }
+    });
+  });
+}
+
+function animateCardGridEntrance(cards) {
+  if (!cards || !cards.length || typeof gsap === "undefined") return;
+  gsap.fromTo(
+    cards,
+    {
+      y: 40,
+      opacity: 0,
+      scale: 0.94,
+    },
+    {
+      y: 0,
+      opacity: 1,
+      scale: 1,
+      duration: 0.65,
+      stagger: 0.08,
+      ease: "power3.out",
+      clearProps: "scale",
+    }
+  );
+}
+
+function initMagneticButtons() {
+  const targets = document.querySelectorAll(
+    ".find-button, .top-submit-btn, .theme-toggle-btn, .card-cue-btn, .copy-blueprint-btn"
+  );
+
+  targets.forEach((btn) => {
+    if (btn.dataset.magneticAttached) return;
+    btn.dataset.magneticAttached = "true";
+
+    btn.addEventListener("mousemove", (e) => {
+      const rect = btn.getBoundingClientRect();
+      const x = e.clientX - (rect.left + rect.width / 2);
+      const y = e.clientY - (rect.top + rect.height / 2);
+
+      const pullX = x * 0.22;
+      const pullY = y * 0.22;
+
+      if (typeof gsap !== "undefined") {
+        gsap.to(btn, {
+          x: pullX,
+          y: pullY,
+          duration: 0.22,
+          ease: "power2.out",
+          overwrite: "auto",
+        });
+      }
+    });
+
+    btn.addEventListener("mouseleave", () => {
+      if (typeof gsap !== "undefined") {
+        gsap.to(btn, {
+          x: 0,
+          y: 0,
+          duration: 0.55,
+          ease: "elastic.out(1, 0.4)",
+          overwrite: "auto",
+        });
+      }
+    });
+  });
+}
+
+function initRouteMapVectorAnimation() {
+  if (typeof ScrollTrigger === "undefined" || typeof gsap === "undefined") return;
+  const routeSection = document.querySelector("#routes");
+  if (!routeSection) return;
+
+  try {
+    ScrollTrigger.create({
+      trigger: routeSection,
+      start: "top 75%",
+      once: true,
+      onEnter: () => {
+        const paths = routeSection.querySelectorAll("path, line");
+        paths.forEach((path) => {
+          const len = path.getTotalLength ? path.getTotalLength() : 200;
+          gsap.fromTo(
+            path,
+            { strokeDasharray: len, strokeDashoffset: len },
+            { strokeDashoffset: 0, duration: 1.8, ease: "power2.inOut" }
+          );
+        });
+      }
+    });
+  } catch (err) {
+    console.warn("Route map animation notice:", err);
+  }
+}
+
+function initRadarCounterAnimations() {
+  if (typeof ScrollTrigger === "undefined" || typeof gsap === "undefined") return;
+  const radarSection = document.querySelector("#radar");
+  if (!radarSection) return;
+
+  try {
+    ScrollTrigger.create({
+      trigger: radarSection,
+      start: "top 70%",
+      once: true,
+      onEnter: () => {
+        const velocityVal = document.querySelector("#radar-velocity-val");
+        const runwayVal = document.querySelector("#radar-runway-val");
+
+        if (velocityVal) {
+          const targetNum = parseInt(velocityVal.textContent, 10) || 88;
+          const obj = { val: 0 };
+          gsap.to(obj, {
+            val: targetNum,
+            duration: 1.6,
+            ease: "power3.out",
+            onUpdate: () => {
+              velocityVal.textContent = Math.round(obj.val);
+            }
+          });
+        }
+
+        if (runwayVal) {
+          const targetPct = parseInt(runwayVal.textContent, 10) || 72;
+          const obj = { val: 0 };
+          gsap.to(obj, {
+            val: targetPct,
+            duration: 1.8,
+            ease: "power3.out",
+            onUpdate: () => {
+              runwayVal.textContent = `${Math.round(obj.val)}%`;
+            }
+          });
+        }
+      }
+    });
+  } catch (err) {
+    console.warn("Radar counter animation notice:", err);
+  }
+}
+
 // Global escape key handler
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
@@ -5830,5 +6209,13 @@ renderVault();
 renderSceneExplorer("all");
 renderRoutesSection("majha-drill");
 initArtistRadar();
+
+// Initialize GSAP & Lenis Motion Engine
+initLenisSmoothScroll();
+initHeroParallax();
+initVelocityMarquee();
+initMagneticButtons();
+initRouteMapVectorAnimation();
+initRadarCounterAnimations();
 
 
