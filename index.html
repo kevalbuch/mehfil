@@ -323,7 +323,8 @@
 
           <div class="vault-actions-bar">
             <button id="view-passport-btn" class="vault-feature-btn">🎫 Taste Passport</button>
-            <button id="share-board-btn" class="vault-feature-btn">📤 Export for Stories</button>
+            <button id="share-board-btn" class="vault-feature-btn">📤 Studio Card Exporter</button>
+            <button id="batch-blueprints-btn" class="vault-feature-btn">📋 Batch Blueprints</button>
             <button id="spotify-sync-btn" class="vault-feature-btn">🎵 Sync to Spotify</button>
           </div>
         </div>
@@ -336,7 +337,20 @@
 
           <div class="board-tabs" id="board-tabs" role="tablist" aria-label="Vault boards"></div>
 
-          <h3 id="active-board-title">my 2026 sound</h3>
+          <!-- Board Header with Management Toolbar -->
+          <div class="board-header-toolbar">
+            <div class="board-title-row">
+              <h3 id="active-board-title">my 2026 sound</h3>
+              <span class="board-stats-chip" id="board-stats-chip">0 tracks</span>
+            </div>
+            <div class="board-manage-actions" id="board-manage-actions">
+              <button type="button" class="board-action-btn" id="rename-board-btn" title="Rename Active Board">✏️ Rename</button>
+              <button type="button" class="board-action-btn" id="duplicate-board-btn" title="Duplicate Board">📑 Duplicate</button>
+              <button type="button" class="board-action-btn" id="clear-board-btn" title="Clear All Tracks">🧹 Clear</button>
+              <button type="button" class="board-action-btn danger" id="delete-board-btn" title="Delete Custom Board">🗑️ Delete</button>
+            </div>
+          </div>
+
           <div id="vault-list" class="vault-list">
             <p class="vault-empty">Save a sound and it will wait here.</p>
           </div>
@@ -418,7 +432,7 @@
 
     <!-- Shareable Board Card Modal (Story Export) -->
     <div id="share-card-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Export Board for Stories">
-      <div class="modal-card story-export-card">
+      <div class="modal-card story-export-card studio-exporter-card">
         <button id="share-close" class="modal-close" aria-label="Close share modal">×</button>
         <div id="share-body"></div>
       </div>

@@ -624,6 +624,65 @@ function setSavedVault(data) {
   localStorage.setItem("mehfil-vault-records", JSON.stringify(data));
 }
 
+function deleteCustomBoard(name) {
+  if (defaultBoards.includes(name)) {
+    return false;
+  }
+  let custom = JSON.parse(localStorage.getItem("mehfil-custom-boards") || "[]");
+  custom = custom.filter((b) => b !== name);
+  localStorage.setItem("mehfil-custom-boards", JSON.stringify(custom));
+
+  const vault = getSavedVault();
+  delete vault[name];
+  setSavedVault(vault);
+  return true;
+}
+
+function renameCustomBoard(oldName, newName) {
+  const trimmed = newName.trim();
+  if (!trimmed || defaultBoards.includes(oldName)) {
+    return false;
+  }
+  const allBoards = getBoards();
+  if (allBoards.includes(trimmed)) {
+    return false;
+  }
+
+  let custom = JSON.parse(localStorage.getItem("mehfil-custom-boards") || "[]");
+  const idx = custom.indexOf(oldName);
+  if (idx > -1) {
+    custom[idx] = trimmed;
+    localStorage.setItem("mehfil-custom-boards", JSON.stringify(custom));
+  }
+
+  const vault = getSavedVault();
+  vault[trimmed] = vault[oldName] || [];
+  delete vault[oldName];
+  setSavedVault(vault);
+  return true;
+}
+
+function duplicateBoard(name) {
+  let copyName = `${name} (Copy)`;
+  let counter = 2;
+  const allBoards = getBoards();
+  while (allBoards.includes(copyName)) {
+    copyName = `${name} (Copy ${counter++})`;
+  }
+
+  saveCustomBoard(copyName);
+  const vault = getSavedVault();
+  vault[copyName] = [...(vault[name] || [])];
+  setSavedVault(vault);
+  return copyName;
+}
+
+function clearBoard(name) {
+  const vault = getSavedVault();
+  vault[name] = [];
+  setSavedVault(vault);
+}
+
 // 3. Editorial "Today" Drop (Product Brief Section 5) & Weekly Drop Archive
 let currentEdition = "vol-01";
 
@@ -3017,6 +3076,98 @@ function renderVault() {
   const vaultTotalEl = document.querySelector("#vault-total");
   if (vaultTotalEl) vaultTotalEl.textContent = `${currentItems.length} saved`;
 
+  // Update Active Board Title
+  const activeTitleEl = document.querySelector("#active-board-title");
+  if (activeTitleEl) activeTitleEl.textContent = activeBoard;
+
+  // Board Telemetry & Scene Intelligence
+  const sounds = currentItems.map((id) => findSoundById(id)).filter(Boolean);
+  const uniqueScenes = new Set();
+  sounds.forEach((s) => {
+    if (s.moment) uniqueScenes.add(s.moment);
+    if (Array.isArray(s.scenes)) s.scenes.forEach((sc) => uniqueScenes.add(sc));
+  });
+  const statsChip = document.querySelector("#board-stats-chip");
+  if (statsChip) {
+    const scenePart = uniqueScenes.size > 0 ? ` · ${uniqueScenes.size} scene${uniqueScenes.size > 1 ? "s" : ""}` : "";
+    statsChip.textContent = `${currentItems.length} track${currentItems.length === 1 ? "" : "s"}${scenePart}`;
+  }
+
+  // Wire Board Management Actions
+  const isDefault = defaultBoards.includes(activeBoard);
+
+  const renameBtn = document.querySelector("#rename-board-btn");
+  if (renameBtn) {
+    renameBtn.disabled = isDefault;
+    renameBtn.classList.toggle("disabled", isDefault);
+    renameBtn.title = isDefault ? "Curated default boards cannot be renamed" : `Rename "${activeBoard}"`;
+    renameBtn.onclick = () => {
+      if (isDefault) {
+        showToast("Curated default boards cannot be renamed.", true);
+        return;
+      }
+      const newName = prompt(`Enter new name for board "${activeBoard}":`, activeBoard);
+      if (newName && newName.trim() && newName.trim() !== activeBoard) {
+        if (renameCustomBoard(activeBoard, newName.trim())) {
+          activeBoard = newName.trim();
+          renderVault();
+          showToast(`Board renamed to "${activeBoard}"`);
+        } else {
+          showToast("Board name already exists or is invalid.", true);
+        }
+      }
+    };
+  }
+
+  const duplicateBtn = document.querySelector("#duplicate-board-btn");
+  if (duplicateBtn) {
+    duplicateBtn.title = `Duplicate "${activeBoard}"`;
+    duplicateBtn.onclick = () => {
+      const dupName = duplicateBoard(activeBoard);
+      activeBoard = dupName;
+      renderVault();
+      showToast(`Duplicated to "${dupName}"`);
+    };
+  }
+
+  const clearBtn = document.querySelector("#clear-board-btn");
+  if (clearBtn) {
+    clearBtn.title = `Clear all sounds from "${activeBoard}"`;
+    clearBtn.onclick = () => {
+      if (!currentItems.length) {
+        showToast(`"${activeBoard}" is already empty.`);
+        return;
+      }
+      if (confirm(`Remove all ${currentItems.length} sounds from "${activeBoard}"?`)) {
+        clearBoard(activeBoard);
+        renderVault();
+        updateCardSaveStates();
+        showToast(`Cleared "${activeBoard}"`);
+      }
+    };
+  }
+
+  const deleteBtn = document.querySelector("#delete-board-btn");
+  if (deleteBtn) {
+    deleteBtn.disabled = isDefault;
+    deleteBtn.classList.toggle("disabled", isDefault);
+    deleteBtn.title = isDefault ? "Curated default boards cannot be deleted" : `Delete custom board "${activeBoard}"`;
+    deleteBtn.onclick = () => {
+      if (isDefault) {
+        showToast("Curated default boards cannot be deleted.", true);
+        return;
+      }
+      if (confirm(`Are you sure you want to permanently delete custom board "${activeBoard}"?`)) {
+        if (deleteCustomBoard(activeBoard)) {
+          showToast(`Board "${activeBoard}" deleted`);
+          activeBoard = defaultBoards[0];
+          renderVault();
+          updateCardSaveStates();
+        }
+      }
+    };
+  }
+
   // Render board tabs
   const tabsContainer = document.querySelector("#board-tabs");
   if (tabsContainer) {
@@ -3025,10 +3176,9 @@ function renderVault() {
       const btn = document.createElement("button");
       btn.className = `board-tab ${board === activeBoard ? "active" : ""}`;
       const count = (vault[board] || []).length;
-      btn.innerHTML = `${board} <small>(${count})</small>`;
+      btn.innerHTML = `${escapeHtml(board)} <small>(${count})</small>`;
       btn.addEventListener("click", () => {
         activeBoard = board;
-        document.querySelector("#active-board-title").textContent = board;
         renderVault();
         updateCardSaveStates();
       });
@@ -3042,7 +3192,7 @@ function renderVault() {
   vaultList.replaceChildren();
 
   if (!currentItems.length) {
-    vaultList.innerHTML = `<p class="vault-empty">No sounds in "${activeBoard}" yet. Use the ＋ button on any sound card to save it here.</p>`;
+    vaultList.innerHTML = `<p class="vault-empty">No sounds in "${escapeHtml(activeBoard)}" yet. Use the ＋ button on any sound card to save it here.</p>`;
     return;
   }
 
@@ -3055,12 +3205,12 @@ function renderVault() {
     row.innerHTML = `
       <span class="vault-dot" style="--tone:var(--${sound.tone})"></span>
       <div class="vault-item-info">
-        <strong>${sound.title}</strong>
-        <p>${sound.artist} · ${sound.language} · <span class="stage stage-${sound.stage.toLowerCase().replace(/\s+/g, "-")}">● ${sound.stage}</span></p>
+        <strong>${escapeHtml(sound.title)}</strong>
+        <p>${escapeHtml(sound.artist)} · ${escapeHtml(sound.language)} · <span class="stage stage-${sound.stage.toLowerCase().replace(/\s+/g, "-")}">● ${escapeHtml(sound.stage)}</span></p>
       </div>
       <div class="vault-item-actions">
-        <a href="${sound.outboundUrl}" target="_blank" rel="noopener noreferrer" title="Listen on Spotify">↗</a>
-        <button aria-label="Remove ${sound.title} from ${activeBoard}" title="Remove sound">×</button>
+        <a href="${escapeHtml(sound.outboundUrl)}" target="_blank" rel="noopener noreferrer" title="Listen on Spotify">↗</a>
+        <button aria-label="Remove ${escapeHtml(sound.title)} from ${escapeHtml(activeBoard)}" title="Remove sound">×</button>
       </div>
     `;
 
@@ -3381,6 +3531,11 @@ document.addEventListener("DOMContentLoaded", () => {
     shareBoardBtn.addEventListener("click", () => openShareBoardModal(activeBoard));
   }
 
+  const batchBlueprintsBtn = document.querySelector("#batch-blueprints-btn");
+  if (batchBlueprintsBtn) {
+    batchBlueprintsBtn.addEventListener("click", () => copyBatchBlueprints(activeBoard));
+  }
+
   const spotifySyncBtn = document.querySelector("#spotify-sync-btn");
   if (spotifySyncBtn) {
     spotifySyncBtn.addEventListener("click", () => openSpotifySyncModal(activeBoard));
@@ -3577,10 +3732,376 @@ if (passportModal) {
   });
 }
 
-// 13. Shareable Board Cards (Instagram Story 9:16 Export)
+// 13. BATCH BLUEPRINT EXPORTER & STUDIO CANVAS SUITE (PHASE C)
 const shareModal = document.querySelector("#share-card-modal");
 const shareBody = document.querySelector("#share-body");
 const shareClose = document.querySelector("#share-close");
+
+function copyBatchBlueprints(boardName) {
+  const vault = getSavedVault();
+  const soundIds = vault[boardName] || [];
+  const tracks = soundIds.map((id) => findSoundById(id)).filter(Boolean);
+
+  if (!tracks.length) {
+    showToast(`"${boardName}" is empty. Save sounds first to export batch blueprints.`, true);
+    return;
+  }
+
+  const exportDate = new Date().toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  });
+
+  const lines = [
+    `🎬 MEHFIL PRODUCTION BLUEPRINT & EDITORIAL CUE SHEET`,
+    `Board: "${boardName}" | Total Tracks: ${tracks.length} | Exported: ${exportDate}`,
+    `Engine: Mehfil Sound Culture & Emerging Audio Graph (mehfil.app)`,
+    `═══════════════════════════════════════════════════════════════════════`,
+    ``,
+    `CUE TIMELINES & CREATOR TRANSITION NOTES:`,
+    ``
+  ];
+
+  tracks.forEach((t, i) => {
+    const num = String(i + 1).padStart(2, "0");
+    const safeTag = (t.genre || "indie").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const langTag = (t.language || "indian").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const hookWindow = t.dropTimestamp || "0:15 - 0:42";
+    const editIdea = t.editorialNote || t.bestFor || "Recommended for b-roll transitions, slow-mo drops, and high-retention cuts.";
+
+    lines.push(`[CUE ${num}] ${t.title.toUpperCase()} — ${t.artist}`);
+    lines.push(`   • Cultural Stage   : ● ${t.stage} | Energy: ${(t.energy || "bold").toUpperCase()}`);
+    lines.push(`   • Language / Genre : ${t.language} · ${t.genre || "Indie Alternative"}`);
+    lines.push(`   • Reel Cut Window  : ${hookWindow} (Optimal engagement sweet-spot)`);
+    lines.push(`   • Director's Cut   : ${editIdea}`);
+    lines.push(`   • Instagram Audio  : ${t.igAudioUrl || "https://www.instagram.com/reels/audio/"}`);
+    lines.push(`   • Creator Tags     : #${langTag}music #${safeTag} #mehfilsound #indiansoundculture #reelsindia`);
+    lines.push(`───────────────────────────────────────────────────────────────────────`);
+  });
+
+  lines.push(``);
+  lines.push(`"Find the sound before it becomes everyone's sound."`);
+  lines.push(`Exported directly from Mehfil Studio Creative Suite · https://mehfil.app`);
+
+  const fullText = lines.join("\n");
+  navigator.clipboard.writeText(fullText).then(() => {
+    showToast(`📋 Copied Batch Blueprints for ${tracks.length} track${tracks.length > 1 ? "s" : ""}!`);
+  }).catch(() => {
+    showToast("Could not access clipboard. Please check browser permissions.", true);
+  });
+}
+
+function truncateCanvasText(ctx, text, maxWidth) {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let str = text;
+  while (str.length > 3 && ctx.measureText(str + "…").width > maxWidth) {
+    str = str.slice(0, -1);
+  }
+  return str + "…";
+}
+
+function renderStudioCanvas(canvas, boardName, tracks, ratio, palette) {
+  if (!canvas) return;
+  const isMidnight = palette === "midnight";
+
+  // Dimensions based on ratio
+  let width = 1920;
+  let height = 1080;
+  if (ratio === "1:1") {
+    width = 1200;
+    height = 1200;
+  } else if (ratio === "9:16") {
+    width = 1080;
+    height = 1920;
+  }
+
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+
+  // Palette tokens
+  const bg = isMidnight ? "#121114" : "#f4ecdf";
+  const border = isMidnight ? "#38343f" : "#201e1c";
+  const innerBorder = isMidnight ? "rgba(222, 214, 199, 0.18)" : "rgba(32, 30, 28, 0.18)";
+  const ink = isMidnight ? "#ded6c7" : "#181818";
+  const muted = isMidnight ? "#9a9184" : "#766f67";
+  const accent = isMidnight ? "#ff6b4a" : "#df503a";
+  const divider = isMidnight ? "rgba(222, 214, 199, 0.12)" : "rgba(32, 30, 28, 0.12)";
+
+  // Background
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, width, height);
+
+  if (ratio === "16:9") {
+    // 16:9 DESKTOP PRESENTATION / MOODBOARD (1920 x 1080)
+    ctx.strokeStyle = border;
+    ctx.lineWidth = 12;
+    ctx.strokeRect(50, 50, width - 100, height - 100);
+
+    ctx.strokeStyle = innerBorder;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(66, 66, width - 132, height - 132);
+
+    // Header Row
+    ctx.fillStyle = accent;
+    ctx.font = "bold 52px 'Playfair Display', serif";
+    ctx.fillText("mehfil®", 110, 150);
+
+    ctx.fillStyle = muted;
+    ctx.font = "bold 20px 'DM Mono', monospace";
+    ctx.fillText("SOUND CULTURE ENGINE // STUDIO MOODBOARD", 110, 190);
+
+    ctx.fillStyle = muted;
+    ctx.font = "bold 18px 'DM Mono', monospace";
+    ctx.textAlign = "right";
+    ctx.fillText(`16:9 DESKTOP PRESENTATION · ${tracks.length} SOUNDS`, width - 110, 150);
+    ctx.font = "16px 'DM Mono', monospace";
+    ctx.fillText(`PALETTE: ${palette.toUpperCase()}`, width - 110, 185);
+    ctx.textAlign = "left";
+
+    // Board Title Section
+    ctx.fillStyle = muted;
+    ctx.font = "20px 'DM Mono', monospace";
+    ctx.fillText("CURATED VAULT BOARD", 110, 260);
+
+    ctx.fillStyle = ink;
+    ctx.font = "bold 58px 'Playfair Display', serif";
+    ctx.fillText(truncateCanvasText(ctx, boardName, 1200), 110, 325);
+
+    // Divider
+    ctx.strokeStyle = border;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(110, 360);
+    ctx.lineTo(width - 110, 360);
+    ctx.stroke();
+
+    // 2-Column Track List (up to 8 tracks)
+    const col1X = 110;
+    const col2X = 990;
+    const colWidth = 820;
+    const items = tracks.slice(0, 8);
+
+    items.forEach((t, i) => {
+      const colX = i < 4 ? col1X : col2X;
+      const rowIdx = i < 4 ? i : i - 4;
+      const y = 440 + rowIdx * 125;
+
+      // Track Number
+      ctx.fillStyle = accent;
+      ctx.font = "bold 28px 'DM Mono', monospace";
+      ctx.fillText(String(i + 1).padStart(2, "0"), colX, y);
+
+      // Track Title
+      ctx.fillStyle = ink;
+      ctx.font = "bold 32px 'Playfair Display', serif";
+      ctx.fillText(truncateCanvasText(ctx, t.title, colWidth - 250), colX + 60, y);
+
+      // Artist & Language
+      ctx.fillStyle = muted;
+      ctx.font = "22px 'DM Sans', sans-serif";
+      ctx.fillText(truncateCanvasText(ctx, `${t.artist} · ${t.language}`, colWidth - 250), colX + 60, y + 36);
+
+      // Stage Tag
+      ctx.fillStyle = ink;
+      ctx.font = "bold 18px 'DM Mono', monospace";
+      ctx.textAlign = "right";
+      ctx.fillText(`● ${t.stage}`, colX + colWidth, y + 5);
+      ctx.textAlign = "left";
+
+      // Row divider
+      ctx.strokeStyle = divider;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(colX, y + 60);
+      ctx.lineTo(colX + colWidth, y + 60);
+      ctx.stroke();
+    });
+
+    // Footer
+    ctx.fillStyle = ink;
+    ctx.font = "italic 26px 'Playfair Display', serif";
+    ctx.fillText('"Find the sound before it becomes everyone\'s sound."', 110, 990);
+
+    ctx.fillStyle = muted;
+    ctx.font = "20px 'DM Mono', monospace";
+    ctx.textAlign = "right";
+    ctx.fillText("mehfil.app · India in Surround Sound", width - 110, 990);
+    ctx.textAlign = "left";
+
+  } else if (ratio === "1:1") {
+    // 1:1 SQUARE MOODBOARD / ALBUM ART (1200 x 1200)
+    ctx.strokeStyle = border;
+    ctx.lineWidth = 10;
+    ctx.strokeRect(45, 45, width - 90, height - 90);
+
+    ctx.strokeStyle = innerBorder;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(58, 58, width - 116, height - 116);
+
+    // Header
+    ctx.fillStyle = accent;
+    ctx.font = "bold 46px 'Playfair Display', serif";
+    ctx.fillText("mehfil®", 90, 130);
+
+    ctx.fillStyle = muted;
+    ctx.font = "bold 18px 'DM Mono', monospace";
+    ctx.fillText("SOUND CULTURE ENGINE // SQUARE MOODBOARD", 90, 168);
+
+    ctx.fillStyle = muted;
+    ctx.font = "bold 16px 'DM Mono', monospace";
+    ctx.textAlign = "right";
+    ctx.fillText(`1:1 SQUARE · ${tracks.length} SOUNDS`, width - 90, 135);
+    ctx.textAlign = "left";
+
+    // Board Title
+    ctx.fillStyle = muted;
+    ctx.font = "18px 'DM Mono', monospace";
+    ctx.fillText("CURATED VAULT BOARD", 90, 235);
+
+    ctx.fillStyle = ink;
+    ctx.font = "bold 52px 'Playfair Display', serif";
+    ctx.fillText(truncateCanvasText(ctx, boardName, 1020), 90, 295);
+
+    // Divider
+    ctx.strokeStyle = border;
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.moveTo(90, 330);
+    ctx.lineTo(width - 90, 330);
+    ctx.stroke();
+
+    // 1-Column Track List (up to 6 tracks)
+    const items = tracks.slice(0, 6);
+    let y = 405;
+    items.forEach((t, i) => {
+      // Number
+      ctx.fillStyle = accent;
+      ctx.font = "bold 26px 'DM Mono', monospace";
+      ctx.fillText(String(i + 1).padStart(2, "0"), 90, y);
+
+      // Title
+      ctx.fillStyle = ink;
+      ctx.font = "bold 30px 'Playfair Display', serif";
+      ctx.fillText(truncateCanvasText(ctx, t.title, 760), 145, y);
+
+      // Artist & Language
+      ctx.fillStyle = muted;
+      ctx.font = "20px 'DM Sans', sans-serif";
+      ctx.fillText(truncateCanvasText(ctx, `${t.artist} · ${t.language}`, 760), 145, y + 32);
+
+      // Stage Tag
+      ctx.fillStyle = ink;
+      ctx.font = "bold 17px 'DM Mono', monospace";
+      ctx.textAlign = "right";
+      ctx.fillText(`● ${t.stage}`, width - 90, y + 5);
+      ctx.textAlign = "left";
+
+      // Row divider
+      ctx.strokeStyle = divider;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(90, y + 54);
+      ctx.lineTo(width - 90, y + 54);
+      ctx.stroke();
+
+      y += 105;
+    });
+
+    // Footer
+    ctx.fillStyle = ink;
+    ctx.font = "italic 22px 'Playfair Display', serif";
+    ctx.fillText('"Find the sound before it becomes everyone\'s sound."', 90, 1120);
+
+    ctx.fillStyle = muted;
+    ctx.font = "18px 'DM Mono', monospace";
+    ctx.textAlign = "right";
+    ctx.fillText("mehfil.app", width - 90, 1120);
+    ctx.textAlign = "left";
+
+  } else {
+    // 9:16 VERTICAL STORY (1080 x 1920)
+    ctx.strokeStyle = border;
+    ctx.lineWidth = 14;
+    ctx.strokeRect(60, 60, width - 120, height - 120);
+
+    ctx.strokeStyle = innerBorder;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(75, 75, width - 150, height - 150);
+
+    // Brand Header
+    ctx.fillStyle = accent;
+    ctx.font = "bold 54px 'Playfair Display', serif";
+    ctx.fillText("mehfil®", 120, 190);
+
+    ctx.fillStyle = muted;
+    ctx.font = "bold 24px 'DM Mono', monospace";
+    ctx.fillText("SOUND CULTURE ENGINE // VERTICAL CARD", 120, 240);
+
+    // Board Title
+    ctx.fillStyle = muted;
+    ctx.font = "24px 'DM Mono', monospace";
+    ctx.fillText("CURATED VAULT BOARD", 120, 360);
+
+    ctx.fillStyle = ink;
+    ctx.font = "bold 78px 'Playfair Display', serif";
+    ctx.fillText(truncateCanvasText(ctx, boardName, 840), 120, 460);
+
+    // Separator Line
+    ctx.strokeStyle = border;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(120, 520);
+    ctx.lineTo(width - 120, 520);
+    ctx.stroke();
+
+    // Tracks list (up to 7 tracks)
+    let y = 620;
+    tracks.slice(0, 7).forEach((t, idx) => {
+      // Number
+      ctx.fillStyle = accent;
+      ctx.font = "bold 32px 'DM Mono', monospace";
+      ctx.fillText(String(idx + 1).padStart(2, "0"), 120, y);
+
+      // Title
+      ctx.fillStyle = ink;
+      ctx.font = "bold 44px 'Playfair Display', serif";
+      ctx.fillText(truncateCanvasText(ctx, t.title, 600), 190, y);
+
+      // Artist & Language
+      ctx.fillStyle = muted;
+      ctx.font = "30px 'DM Sans', sans-serif";
+      ctx.fillText(truncateCanvasText(ctx, `${t.artist} · ${t.language}`, 600), 190, y + 45);
+
+      // Stage tag
+      ctx.fillStyle = ink;
+      ctx.font = "bold 24px 'DM Mono', monospace";
+      ctx.textAlign = "right";
+      ctx.fillText(`● ${t.stage}`, width - 120, y);
+      ctx.textAlign = "left";
+
+      // Dotted divider
+      ctx.strokeStyle = divider;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(120, y + 80);
+      ctx.lineTo(width - 120, y + 80);
+      ctx.stroke();
+
+      y += 145;
+    });
+
+    // Footer Tagline
+    ctx.fillStyle = ink;
+    ctx.font = "italic 34px 'Playfair Display', serif";
+    ctx.fillText('"Find the sound before it becomes everyone\'s sound."', 120, 1680);
+
+    ctx.fillStyle = muted;
+    ctx.font = "24px 'DM Mono', monospace";
+    ctx.fillText("mehfil.app · India in Surround Sound", 120, 1740);
+  }
+}
 
 function openShareBoardModal(boardName) {
   if (!shareModal || !shareBody) return;
@@ -3593,7 +4114,7 @@ function openShareBoardModal(boardName) {
       <div class="story-empty-state">
         <p class="story-empty-icon">📂</p>
         <h3>Board is empty</h3>
-        <p>Save at least one sound to "${boardName}" to export a shareable Instagram Story card.</p>
+        <p>Save at least one sound to "${escapeHtml(boardName)}" to export studio cards or moodboards.</p>
       </div>
     `;
     shareModal.classList.remove("hidden");
@@ -3601,63 +4122,119 @@ function openShareBoardModal(boardName) {
     return;
   }
 
-  const trackRowsHtml = tracks.slice(0, 6).map((t, i) => `
-    <div class="story-card-item">
-      <span class="story-item-num">0${i + 1}</span>
-      <div class="story-item-info">
-        <strong>${t.title}</strong>
-        <p>${t.artist} · ${t.language}</p>
-      </div>
-      <span class="stage stage-${t.stage.toLowerCase().replace(/\s+/g, "-")}">● ${t.stage}</span>
-    </div>
-  `).join("");
+  // Detect current theme to match initial palette
+  const currentTheme = document.documentElement.getAttribute("data-theme") || "paper";
+  let activeRatio = "16:9";
+  let activePalette = currentTheme === "midnight" ? "midnight" : "paper";
 
   shareBody.innerHTML = `
-    <div class="story-export-container">
-      <div class="story-preview-wrapper">
-        <div class="story-card-preview" id="story-card-canvas-preview">
-          <div class="story-header-brand">
-            <span>mehfil®</span>
-            <small>SOUND VAULT · VOL. 01</small>
+    <div class="studio-exporter-header">
+      <span class="story-label">Studio Creative Suite · Canvas Engine</span>
+      <h2>Multi-Ratio <em>Sound Card Exporter</em></h2>
+      <p>Generate production-grade visual moodboards and cue cards for presentations, client decks, and story stickers.</p>
+    </div>
+    <div class="studio-exporter-body">
+      <div class="studio-toolbar-row">
+        <div>
+          <span class="studio-group-label">Ratio:</span>
+          <div class="studio-selector-pills" id="studio-ratio-pills">
+            <button type="button" class="studio-pill ${activeRatio === '16:9' ? 'active' : ''}" data-ratio="16:9">16:9 Desktop</button>
+            <button type="button" class="studio-pill ${activeRatio === '1:1' ? 'active' : ''}" data-ratio="1:1">1:1 Square</button>
+            <button type="button" class="studio-pill ${activeRatio === '9:16' ? 'active' : ''}" data-ratio="9:16">9:16 Vertical</button>
           </div>
-          <div class="story-board-title">
-            <p>CURATED BOARD</p>
-            <h3>${boardName}</h3>
-          </div>
-          <div class="story-tracklist">
-            ${trackRowsHtml}
-          </div>
-          <div class="story-card-footer">
-            <p>"Find the sound before it becomes everyone's sound."</p>
-            <span>mehfil.app · India Sound Culture</span>
+        </div>
+        <div>
+          <span class="studio-group-label">Palette:</span>
+          <div class="studio-selector-pills" id="studio-palette-pills">
+            <button type="button" class="studio-pill ${activePalette === 'paper' ? 'active' : ''}" data-palette="paper">☀️ Paper Warm</button>
+            <button type="button" class="studio-pill ${activePalette === 'midnight' ? 'active' : ''}" data-palette="midnight">🌙 Midnight Obsidian</button>
           </div>
         </div>
       </div>
-      <div class="story-export-controls">
-        <h4>Export for Instagram Stories</h4>
-        <p>Download a high-resolution 9:16 vertical card or copy the tracklist text ready for story stickers.</p>
-        <div class="story-action-btns">
-          <button id="download-story-btn" class="passport-action-btn primary">📥 Download Story Image (.png)</button>
-          <button id="copy-story-text-btn" class="passport-action-btn">📋 Copy Story Text</button>
-        </div>
+
+      <div class="studio-canvas-preview-wrap">
+        <canvas id="studio-export-canvas"></canvas>
+      </div>
+
+      <div class="studio-actions-footer">
+        <button type="button" class="studio-export-btn secondary" id="studio-copy-text-btn">📋 Copy Tracklist</button>
+        <button type="button" class="studio-export-btn secondary" id="studio-copy-img-btn">🖼️ Copy Image to Clipboard</button>
+        <button type="button" class="studio-export-btn primary" id="studio-download-btn">📥 Download High-Res PNG</button>
       </div>
     </div>
   `;
 
-  document.querySelector("#download-story-btn").addEventListener("click", () => {
-    downloadStoryCanvas(boardName, tracks);
+  const canvas = document.querySelector("#studio-export-canvas");
+  const updateCanvas = () => {
+    renderStudioCanvas(canvas, boardName, tracks, activeRatio, activePalette);
+  };
+
+  // Wire Ratio Pills
+  const ratioPills = document.querySelectorAll("#studio-ratio-pills .studio-pill");
+  ratioPills.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      ratioPills.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeRatio = btn.dataset.ratio;
+      updateCanvas();
+    });
   });
 
-  document.querySelector("#copy-story-text-btn").addEventListener("click", () => {
+  // Wire Palette Pills
+  const palettePills = document.querySelectorAll("#studio-palette-pills .studio-pill");
+  palettePills.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      palettePills.forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      activePalette = btn.dataset.palette;
+      updateCanvas();
+    });
+  });
+
+  // Initial draw
+  updateCanvas();
+
+  // Wire Download Button
+  document.querySelector("#studio-download-btn").addEventListener("click", () => {
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const safeBoard = boardName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      const safeRatio = activeRatio.replace(":", "x");
+      a.download = `mehfil-${safeBoard}-${safeRatio}-${activePalette}.png`;
+      a.href = url;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      showToast("High-Res Studio Card downloaded!");
+    }, "image/png");
+  });
+
+  // Wire Copy Image to Clipboard
+  document.querySelector("#studio-copy-img-btn").addEventListener("click", () => {
+    if (navigator.clipboard && window.ClipboardItem) {
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        navigator.clipboard.write([new ClipboardItem({ "image/png": blob })])
+          .then(() => showToast("🖼️ Studio card image copied to clipboard!"))
+          .catch(() => showToast("Direct image copy not supported. Please use Download instead.", true));
+      }, "image/png");
+    } else {
+      showToast("Direct image copy not supported in this browser. Please use Download.", true);
+    }
+  });
+
+  // Wire Copy Plain Tracklist
+  document.querySelector("#studio-copy-text-btn").addEventListener("click", () => {
     const lines = [
       `🎵 MEHFIL SOUND BOARD: "${boardName}"`,
       `══════════════════════════════════`,
-      ...tracks.map((t, i) => `0${i + 1}. ${t.title} — ${t.artist} [${t.stage}]`),
+      ...tracks.map((t, i) => `0${i + 1}. ${t.title} — ${t.artist} [● ${t.stage}]`),
       `══════════════════════════════════`,
       `Discovered on Mehfil (India Sound Culture Engine)`
     ].join("\n");
     navigator.clipboard.writeText(lines).then(() => {
-      showToast("Story text copied to clipboard!");
+      showToast("Tracklist copied to clipboard!");
     });
   });
 
@@ -3676,103 +4253,6 @@ if (shareModal) {
   shareModal.addEventListener("click", (e) => {
     if (e.target === shareModal) closeShareBoardModal();
   });
-}
-
-// 14. HTML5 Canvas Renderers (Client-side PNG Exports)
-function downloadStoryCanvas(boardName, tracks) {
-  const canvas = document.createElement("canvas");
-  canvas.width = 1080;
-  canvas.height = 1920;
-  const ctx = canvas.getContext("2d");
-
-  // Background
-  ctx.fillStyle = "#f0ebe0";
-  ctx.fillRect(0, 0, 1080, 1920);
-
-  // Borders
-  ctx.strokeStyle = "#201e1c";
-  ctx.lineWidth = 14;
-  ctx.strokeRect(60, 60, 960, 1800);
-
-  // Inner Accent Line
-  ctx.lineWidth = 2;
-  ctx.strokeRect(75, 75, 930, 1770);
-
-  // Brand Header
-  ctx.fillStyle = "#df503a";
-  ctx.font = "bold 54px 'Playfair Display', serif";
-  ctx.fillText("mehfil®", 120, 190);
-
-  ctx.fillStyle = "#766f67";
-  ctx.font = "bold 24px 'DM Mono', monospace";
-  ctx.fillText("SOUND CULTURE ENGINE // VOL. 01", 120, 240);
-
-  // Board Title
-  ctx.fillStyle = "#766f67";
-  ctx.font = "24px 'DM Mono', monospace";
-  ctx.fillText("CURATED VAULT BOARD", 120, 360);
-
-  ctx.fillStyle = "#181818";
-  ctx.font = "bold 82px 'Playfair Display', serif";
-  ctx.fillText(boardName, 120, 460);
-
-  // Separator Line
-  ctx.strokeStyle = "#201e1c";
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.moveTo(120, 520);
-  ctx.lineTo(960, 520);
-  ctx.stroke();
-
-  // Tracks list
-  let y = 620;
-  tracks.slice(0, 7).forEach((t, idx) => {
-    // Number
-    ctx.fillStyle = "#df503a";
-    ctx.font = "bold 32px 'DM Mono', monospace";
-    ctx.fillText(String(idx + 1).padStart(2, "0"), 120, y);
-
-    // Title
-    ctx.fillStyle = "#181818";
-    ctx.font = "bold 44px 'Playfair Display', serif";
-    ctx.fillText(t.title, 190, y);
-
-    // Artist & Language
-    ctx.fillStyle = "#766f67";
-    ctx.font = "30px 'DM Sans', sans-serif";
-    ctx.fillText(`${t.artist} · ${t.language}`, 190, y + 45);
-
-    // Stage tag
-    ctx.fillStyle = "#201e1c";
-    ctx.font = "bold 24px 'DM Mono', monospace";
-    ctx.fillText(`● ${t.stage}`, 800, y);
-
-    // Dotted divider
-    ctx.strokeStyle = "rgba(24, 24, 24, 0.15)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(120, y + 80);
-    ctx.lineTo(960, y + 80);
-    ctx.stroke();
-
-    y += 145;
-  });
-
-  // Footer Tagline
-  ctx.fillStyle = "#181818";
-  ctx.font = "italic 36px 'Playfair Display', serif";
-  ctx.fillText('"Find the sound before it becomes everyone\'s sound."', 120, 1680);
-
-  ctx.fillStyle = "#766f67";
-  ctx.font = "24px 'DM Mono', monospace";
-  ctx.fillText("mehfil.app · India in Surround Sound", 120, 1740);
-
-  // Download Trigger
-  const link = document.createElement("a");
-  link.download = `mehfil-${boardName.toLowerCase().replace(/\s+/g, "-")}-story.png`;
-  link.href = canvas.toDataURL("image/png");
-  link.click();
-  showToast("Story card downloaded!");
 }
 
 function downloadPassportCanvas(data) {
