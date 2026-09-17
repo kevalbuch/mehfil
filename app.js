@@ -729,31 +729,575 @@ const editionsData = {
   ]
 };
 
-// 4. Recommendation Engine (Dynamic Match)
-function getRecommendedSounds(moment, energy) {
-  // Filter by moment compatibility first
-  let matches = catalog.filter((s) => s.moments && s.moments.includes(moment));
+// ==========================================================================
+// 4. DYNAMIC TREND ENGINE & STRICT RELEVANCE ENFORCER
+// ==========================================================================
 
-  // Prioritize matching energy if available
-  if (energy) {
-    const energyMatches = matches.filter((s) => s.energy === energy);
-    if (energyMatches.length >= 2) {
-      matches = energyMatches;
+const DYNAMIC_SOUNDS_CACHE = {};
+
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function findSoundById(id) {
+  return catalog.find((s) => s.id === id) || DYNAMIC_SOUNDS_CACHE[id] || null;
+}
+
+const MOMENT_RULES = {
+  gym: {
+    label: "Gym / PR edit",
+    preferredEnergy: "bold",
+    strictEnergies: ["bold", "chaotic"],
+    forbiddenKeywords: [
+      "love", "romantic", "wedding", "phera", "lullaby", "sweet", "acoustic", 
+      "lofi", "lo-fi", "chill", "soft-launch", "sleep", "breakup", "heartbreak", 
+      "soothing", "slow", "priyo", "sanware", "bujhina", "samayama", "pyar", 
+      "ishq", "romantic melody", "candid pheras", "sunset-fit", "after light"
+    ],
+    requiredKeywords: ["gym", "workout", "drill", "trap", "hip-hop", "rap", "bass", "phonk", "pr", "hype", "pump", "iron", "barbell", "bold"],
+    defaultQueries: [
+      "punjabi drill workout",
+      "shubh cheques",
+      "sidhu moose wala drill",
+      "wazir patar gal sunja",
+      "hanumankind big dawgs",
+      "karan aujla drill",
+      "indian hip hop gym workout"
+    ]
+  },
+  wedding: {
+    label: "Wedding",
+    preferredEnergy: "soft",
+    strictEnergies: ["soft", "nostalgic", "bold", "chaotic"],
+    forbiddenKeywords: [
+      "gym", "workout", "drill", "phonk", "breakup", "heartbreak", "crying", "death", "screaming", "rage", "iron", "deadlift"
+    ],
+    requiredKeywords: ["wedding", "shaadi", "sangeet", "baraat", "shehnai", "celebration", "phera", "festive", "folk", "kudmayi", "marriage"],
+    defaultQueries: [
+      "punjabi wedding sangeet",
+      "hindi wedding acoustic melody",
+      "royal shaadi shehnai celebration",
+      "kudmayi wedding"
+    ]
+  },
+  breakup: {
+    label: "Breakup & healing",
+    preferredEnergy: "nostalgic",
+    strictEnergies: ["soft", "nostalgic"],
+    forbiddenKeywords: [
+      "gym", "workout", "drill", "bhangra", "party", "club", "dance", "sangeet", "dhol", "screaming", "phonk", "deadlift"
+    ],
+    requiredKeywords: ["breakup", "sad", "heartbreak", "yearning", "melanchol", "acoustic", "emotional", "alone", "miss"],
+    defaultQueries: [
+      "hindi indie breakup acoustic",
+      "sad emotional yearning indie hindi",
+      "abdul hannan bikhra"
+    ]
+  },
+  "late-night": {
+    label: "Late night thoughts",
+    preferredEnergy: "nostalgic",
+    strictEnergies: ["soft", "nostalgic"],
+    forbiddenKeywords: [
+      "gym", "workout", "screaming", "rage", "bhangra", "dhol", "club", "party", "deadlift", "phonk"
+    ],
+    requiredKeywords: ["lofi", "bedroom-pop", "ambient", "acoustic", "slow", "midnight", "night", "3am", "thoughts", "rain", "window"],
+    defaultQueries: [
+      "delhi bedroom pop lo-fi",
+      "rain monsoon acoustic hindi",
+      "late night indie pop hindi"
+    ]
+  },
+  outfit: {
+    label: "Outfit reveal",
+    preferredEnergy: "soft",
+    strictEnergies: ["soft", "bold", "nostalgic"],
+    forbiddenKeywords: [
+      "bhajan", "devotional", "workout-screaming", "rage", "deadlift", "crying", "funeral"
+    ],
+    requiredKeywords: ["aesthetic", "indie", "synthwave", "lofi", "groove", "fashion", "fit", "drip", "reveal", "mirror"],
+    defaultQueries: [
+      "aesthetic reel indie pop hindi",
+      "trendy instagram outfit audio india",
+      "dikshant aankhon se batana"
+    ]
+  },
+  travel: {
+    label: "Travel dump",
+    preferredEnergy: "nostalgic",
+    strictEnergies: ["soft", "bold", "nostalgic", "chaotic"],
+    forbiddenKeywords: [
+      "screaming", "rage", "workout-pr", "deadlift", "crying", "mourning"
+    ],
+    requiredKeywords: ["wanderlust", "scenic", "indie-rock", "synthwave", "acoustic", "road-trip", "travel", "mountains", "hills", "sea", "drive"],
+    defaultQueries: [
+      "road trip hindi indie",
+      "scenic mountain acoustic indie hindi",
+      "the local train choo lo",
+      "goa sunset indie pop"
+    ]
+  },
+  "soft-launch": {
+    label: "Soft launch",
+    preferredEnergy: "soft",
+    strictEnergies: ["soft", "nostalgic"],
+    forbiddenKeywords: [
+      "gym", "workout", "screaming", "rage", "drill", "hardcore", "phonk", "deadlift"
+    ],
+    requiredKeywords: ["subtle", "warm", "acoustic", "lofi", "indie-pop", "couple", "love", "holding hands"],
+    defaultQueries: [
+      "aesthetic couple soft launch audio",
+      "subtle warm indie love song hindi",
+      "iraaday abdul hannan"
+    ]
+  },
+  birthday: {
+    label: "Birthday",
+    preferredEnergy: "soft",
+    strictEnergies: ["soft", "bold", "chaotic"],
+    forbiddenKeywords: [
+      "breakup", "funeral", "depressing", "mourning", "deadlift"
+    ],
+    requiredKeywords: ["celebration", "fun", "friendship", "indie-pop", "warm", "birthday"],
+    defaultQueries: [
+      "fun aesthetic birthday reel audio",
+      "upbeat friendship celebration indie hindi"
+    ]
+  },
+  farewell: {
+    label: "College farewell",
+    preferredEnergy: "nostalgic",
+    strictEnergies: ["nostalgic", "soft"],
+    forbiddenKeywords: [
+      "gym", "screaming", "rage", "club-banger", "phonk"
+    ],
+    requiredKeywords: ["nostalgic", "college-anthem", "friendship", "acoustic-rock", "yearning", "farewell", "last day", "seniors"],
+    defaultQueries: [
+      "the local train choo lo",
+      "college farewell indie rock hindi",
+      "nostalgic friendship anthem hindi"
+    ]
+  },
+  meme: {
+    label: "Meme / chaotic",
+    preferredEnergy: "chaotic",
+    strictEnergies: ["chaotic", "bold"],
+    forbiddenKeywords: [
+      "serious", "mourning", "devotional", "depressing"
+    ],
+    requiredKeywords: ["funny", "ironic", "retro-kitsch", "bhangra", "drill-parody", "chaotic", "meme"],
+    defaultQueries: [
+      "trending meme reel audio india",
+      "funny viral sound reel instagram"
+    ]
+  }
+};
+
+function isSoundStrictlyCompatible(sound, moment) {
+  if (!sound) return false;
+  const rules = MOMENT_RULES[moment];
+  if (!rules) return true;
+
+  const textToScan = (
+    (sound.title || "") + " " +
+    (sound.artist || "") + " " +
+    (sound.language || "") + " " +
+    (sound.scene || "") + " " +
+    (sound.best || "") + " " +
+    (sound.idea || "") + " " +
+    (sound.primaryGenreName || "") + " " +
+    (sound.collectionName || "") + " " +
+    (sound.moments || []).join(" ")
+  ).toLowerCase();
+
+  // 1. Strictly forbid incompatible themes
+  if (rules.forbiddenKeywords && rules.forbiddenKeywords.length) {
+    for (const forbidden of rules.forbiddenKeywords) {
+      if (textToScan.includes(forbidden.toLowerCase())) {
+        return false;
+      }
     }
   }
 
-  // Ensure variety: prioritize Early, Rising, or Retro over Saturated
-  const nonSaturated = matches.filter((s) => s.stage !== "Saturated");
-  const candidates = nonSaturated.length >= 3 ? nonSaturated : matches;
+  // 2. Gym specific strict criteria
+  if (moment === "gym") {
+    // If energy is soft, gym is NEVER soft
+    if (sound.energy === "soft") return false;
 
-  // Shuffle deterministic sample or take top 3
-  if (candidates.length <= 3) {
-    // Fill up to 3 from general catalog if fewer than 3
-    const fill = catalog.filter((s) => !candidates.includes(s) && (s.energy === energy || s.stage === "Rising"));
-    return [...candidates, ...fill].slice(0, 3);
+    const hasGymMatch = 
+      (sound.moments && sound.moments.includes("gym")) ||
+      rules.requiredKeywords.some((k) => textToScan.includes(k));
+
+    if (!hasGymMatch) return false;
   }
 
-  return candidates.slice(0, 3);
+  // 3. Wedding specific criteria
+  if (moment === "wedding") {
+    const hasWeddingMatch = 
+      (sound.moments && sound.moments.includes("wedding")) ||
+      rules.requiredKeywords.some((k) => textToScan.includes(k));
+    if (!hasWeddingMatch) return false;
+  }
+
+  // 4. Breakup specific criteria
+  if (moment === "breakup") {
+    const hasBreakupMatch = 
+      (sound.moments && sound.moments.includes("breakup")) ||
+      rules.requiredKeywords.some((k) => textToScan.includes(k));
+    if (!hasBreakupMatch) return false;
+  }
+
+  return true;
+}
+
+function parseIdeaIntent(ideaText) {
+  if (!ideaText || !ideaText.trim()) return null;
+  const text = ideaText.toLowerCase();
+
+  let detectedMoment = "outfit";
+  let detectedEnergy = "soft";
+  let searchTerms = [];
+
+  if (text.includes("deadlift") || text.includes("pr") || text.includes("gym") || text.includes("workout") || text.includes("lift") || text.includes("squat") || text.includes("bench") || text.includes("chalk") || text.includes("pump") || text.includes("fitness")) {
+    detectedMoment = "gym";
+    detectedEnergy = "bold";
+    searchTerms = [
+      "punjabi drill workout",
+      "shubh cheques",
+      "sidhu moose wala drill",
+      "wazir patar gal sunja",
+      "indian hip hop workout drill",
+      "karan aujla drill"
+    ];
+  } else if (text.includes("wedding") || text.includes("shaadi") || text.includes("sangeet") || text.includes("haldi") || text.includes("mehendi") || text.includes("baraat") || text.includes("dulha") || text.includes("dulhan") || text.includes("phera")) {
+    detectedMoment = "wedding";
+    detectedEnergy = text.includes("sangeet") || text.includes("baraat") ? "chaotic" : "soft";
+    searchTerms = [
+      "punjabi wedding sangeet",
+      "hindi wedding acoustic melody",
+      "royal shaadi shehnai celebration",
+      "kudmayi wedding"
+    ];
+  } else if (text.includes("breakup") || text.includes("heartbreak") || text.includes("crying") || text.includes("alone") || text.includes("miss") || text.includes("move on") || text.includes("hurts") || text.includes("tears")) {
+    detectedMoment = "breakup";
+    detectedEnergy = "nostalgic";
+    searchTerms = [
+      "hindi indie breakup acoustic",
+      "sad emotional yearning indie hindi",
+      "abdul hannan bikhra"
+    ];
+  } else if (text.includes("chai") || text.includes("balcony") || text.includes("rain") || text.includes("monsoon") || text.includes("midnight") || text.includes("night") || text.includes("thoughts") || text.includes("3am") || text.includes("lo-fi") || text.includes("lofi")) {
+    detectedMoment = "late-night";
+    detectedEnergy = "nostalgic";
+    searchTerms = [
+      "delhi bedroom pop lo-fi",
+      "rain monsoon acoustic hindi",
+      "late night indie pop hindi"
+    ];
+  } else if (text.includes("travel") || text.includes("drive") || text.includes("road") || text.includes("trip") || text.includes("mountains") || text.includes("hills") || text.includes("beach") || text.includes("goa") || text.includes("sea")) {
+    detectedMoment = "travel";
+    detectedEnergy = text.includes("fast") || text.includes("speed") ? "bold" : "nostalgic";
+    searchTerms = [
+      "road trip hindi indie",
+      "scenic mountain acoustic indie hindi",
+      "the local train choo lo",
+      "goa sunset indie pop"
+    ];
+  } else if (text.includes("outfit") || text.includes("fit") || text.includes("mirror") || text.includes("drip") || text.includes("style") || text.includes("fashion") || text.includes("reveal")) {
+    detectedMoment = "outfit";
+    detectedEnergy = text.includes("hype") ? "bold" : "soft";
+    searchTerms = [
+      "aesthetic reel indie pop hindi",
+      "trendy instagram outfit audio india",
+      "dikshant aankhon se batana"
+    ];
+  } else if (text.includes("soft launch") || text.includes("couple") || text.includes("holding hands") || text.includes("candid couple")) {
+    detectedMoment = "soft-launch";
+    detectedEnergy = "soft";
+    searchTerms = [
+      "aesthetic couple soft launch audio",
+      "subtle warm indie love song hindi",
+      "iraaday abdul hannan"
+    ];
+  } else if (text.includes("farewell") || text.includes("college") || text.includes("school") || text.includes("last day") || text.includes("seniors") || text.includes("batch")) {
+    detectedMoment = "farewell";
+    detectedEnergy = "nostalgic";
+    searchTerms = [
+      "the local train choo lo",
+      "college farewell indie rock hindi",
+      "nostalgic friendship anthem hindi"
+    ];
+  } else if (text.includes("meme") || text.includes("funny") || text.includes("chaotic") || text.includes("roast") || text.includes("pov")) {
+    detectedMoment = "meme";
+    detectedEnergy = "chaotic";
+    searchTerms = [
+      "trending meme reel audio india",
+      "funny viral sound reel instagram"
+    ];
+  } else {
+    searchTerms = [
+      ideaText.trim() + " hindi indie",
+      ideaText.trim() + " reel audio india",
+      ideaText.trim()
+    ];
+  }
+
+  return {
+    detectedMoment,
+    detectedEnergy,
+    searchTerms,
+    rawText: ideaText.trim()
+  };
+}
+
+class DynamicSoundEngine {
+  constructor() {
+    this.cache = new Map();
+  }
+
+  inferLanguageScene(item, moment) {
+    const genre = (item.primaryGenreName || "").toLowerCase();
+    const artist = (item.artistName || "").toLowerCase();
+
+    if (genre.includes("punjabi") || artist.includes("sidhu") || artist.includes("wazir") || artist.includes("shubh") || artist.includes("karan")) {
+      return "Punjabi Drill";
+    }
+    if (genre.includes("tamil")) return "Tamil Indie";
+    if (genre.includes("telugu")) return "Telugu Groove";
+    if (genre.includes("malayalam") || artist.includes("hanumankind")) return "Malayalam / Kerala Hip-Hop";
+    if (genre.includes("hip-hop") || genre.includes("rap")) return "Desi Hip-Hop";
+    if (genre.includes("electronic") || genre.includes("dance")) return "Indie Electronic";
+    if (moment === "gym") return "Desi Drill / Trap";
+    return "Hindi Indie Pop";
+  }
+
+  inferSceneHub(item, moment) {
+    const artist = (item.artistName || "").toLowerCase();
+    if (artist.includes("sidhu") || artist.includes("wazir") || artist.includes("shubh") || artist.includes("karan aujla") || artist.includes("parmish")) {
+      return "Majha & Malwa Drill Circuit";
+    }
+    if (artist.includes("hanumankind") || artist.includes("kalmi")) {
+      return "Bengaluru & Kochi Underground";
+    }
+    if (artist.includes("prabh deep") || artist.includes("seedhe maut")) {
+      return "West Delhi Hip-Hop Belt";
+    }
+    if (artist.includes("divine")) {
+      return "Mumbai Gully Rap Corridor";
+    }
+    if (artist.includes("dikshant") || artist.includes("abdul hannan")) {
+      return "Delhi Bedroom Pop Scene";
+    }
+    if (artist.includes("local train")) {
+      return "Chandigarh Indie Rock Hub";
+    }
+
+    if (moment === "gym") return "North Indian Drill Corridor";
+    if (moment === "wedding") return "Punjab & Rajasthan Folk Hub";
+    if (moment === "travel") return "Mountain Indie Circuit";
+    if (moment === "late-night") return "Basement Lo-Fi Collective";
+    return "National Indie Circuit";
+  }
+
+  inferStage(item) {
+    if (!item.releaseDate) return "Rising";
+    const year = new Date(item.releaseDate).getFullYear();
+    if (year >= 2024) return "Rising";
+    if (year >= 2022) return "Peaking";
+    return "Retro comeback";
+  }
+
+  inferHookWindow(item, moment) {
+    if (moment === "gym") return "0:28 — 0:43";
+    if (moment === "wedding") return "0:30 — 0:45";
+    if (moment === "late-night") return "0:15 — 0:30";
+    return "0:24 — 0:39";
+  }
+
+  generateBestFor(item, moment, ideaText) {
+    if (ideaText && ideaText.trim()) {
+      return `Custom match for: "${ideaText.trim().slice(0, 60)}"`;
+    }
+    if (moment === "gym") {
+      return "Best for heavy barbell lockouts, chalk drops, and high-intensity PR lifts";
+    }
+    if (moment === "wedding") {
+      return "Best for candid garland exchange, sangeet entrance, or royal couple portraits";
+    }
+    if (moment === "breakup") {
+      return "Best for solitary night walks, rainy window edits, and heartfelt healing dumps";
+    }
+    if (moment === "travel") {
+      return "Best for sweeping hill perspectives, golden hour road trips, and sunset motion";
+    }
+    if (moment === "outfit") {
+      return "Best for smooth 3-beat mirror reveal with pause on final silhouette";
+    }
+    if (moment === "late-night") {
+      return "Best for 3am introspective thoughts, city bokeh reflections, and tea steam frames";
+    }
+    return `Best for viral ${moment} reels with authentic cultural retention`;
+  }
+
+  generateExecutionBlueprint(item, moment, ideaText) {
+    if (moment === "gym") {
+      return "Do not cut repeatedly during the concentric lift. Hold one continuous wide shot through the entire rep, then sync the chalk explosion or weight rack strictly on the beat drop.";
+    }
+    if (moment === "wedding") {
+      return "Capture the unspoken candid glances between elders right before the procession moves. Let the organic acoustic intro play without artificial slow-mo.";
+    }
+    if (moment === "travel") {
+      return "Keep the camera perspective locked on the moving horizon. Match road acceleration to the percussion switch rather than doing fast cuts.";
+    }
+    if (moment === "outfit") {
+      return "Start in natural ambient light in complete stillness. Reveal fabric textures and jewelry sparkle only when the bass groove takes over.";
+    }
+    if (moment === "late-night") {
+      return "Frame through window glass with rain drops in soft focus. Let the music breathe without intrusive on-screen caption clutter.";
+    }
+    return "Let the visual tension build during the melodic intro, then execute your key moment on the first percussion strike.";
+  }
+
+  determineTone(moment, energy) {
+    if (moment === "gym") return "accent";
+    if (energy === "bold") return "accent";
+    if (energy === "nostalgic") return "violet";
+    if (energy === "chaotic") return "ink";
+    return "peach";
+  }
+
+  calculateRelevance(item, moment, ideaText) {
+    let score = 94;
+    const title = (item.trackName || "").toLowerCase();
+    const artist = (item.artistName || "").toLowerCase();
+    const genre = (item.primaryGenreName || "").toLowerCase();
+
+    if (ideaText) {
+      const words = ideaText.toLowerCase().split(/\s+/);
+      for (const w of words) {
+        if (w.length > 3 && (title.includes(w) || artist.includes(w) || genre.includes(w))) {
+          score += 2;
+        }
+      }
+    }
+
+    if (moment === "gym" && (genre.includes("drill") || genre.includes("hip-hop") || artist.includes("shubh") || artist.includes("wazir") || artist.includes("moose"))) {
+      score += 4;
+    }
+    return Math.min(score, 99);
+  }
+
+  async fetchViralTracks(moment, energy, ideaText = "") {
+    const rules = MOMENT_RULES[moment] || MOMENT_RULES["gym"];
+    const parsedIdea = ideaText ? parseIdeaIntent(ideaText) : null;
+    
+    let queryList = [];
+    if (parsedIdea && parsedIdea.searchTerms.length > 0) {
+      queryList = parsedIdea.searchTerms;
+    } else if (rules && rules.defaultQueries) {
+      queryList = rules.defaultQueries;
+    } else {
+      queryList = [`${moment} viral reel india audio`];
+    }
+
+    const cacheKey = `${moment}_${energy}_${(ideaText || "").trim().toLowerCase()}`;
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey);
+    }
+
+    const collectedTracks = [];
+    const seenIds = new Set();
+
+    for (const q of queryList.slice(0, 3)) {
+      try {
+        const url = `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&country=IN&media=music&entity=song&limit=15`;
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const data = await res.json();
+        
+        if (data.results && data.results.length > 0) {
+          for (const item of data.results) {
+            if (!item.previewUrl) continue;
+            
+            const soundId = "dyn-" + (item.trackName + "-" + item.artistName)
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-|-$/g, "");
+
+            if (seenIds.has(soundId)) continue;
+
+            const soundObj = {
+              id: soundId,
+              title: item.trackName,
+              artist: item.artistName,
+              language: this.inferLanguageScene(item, moment),
+              scene: this.inferSceneHub(item, moment),
+              stage: this.inferStage(item),
+              hook: this.inferHookWindow(item, moment),
+              best: this.generateBestFor(item, moment, ideaText),
+              idea: this.generateExecutionBlueprint(item, moment, ideaText),
+              soundTwins: [item.collectionName || "Single Release"],
+              outboundUrl: `https://open.spotify.com/search/${encodeURIComponent(item.trackName + " " + item.artistName)}`,
+              tone: this.determineTone(moment, energy),
+              energy: energy || "bold",
+              moments: [moment],
+              art: `live viral / ${item.primaryGenreName || "Reel Audio"}`,
+              artworkUrl: item.artworkUrl100 || null,
+              previewAudioUrl: item.previewUrl,
+              relevanceScore: this.calculateRelevance(item, moment, ideaText),
+              isDynamic: true,
+              collectionName: item.collectionName || "",
+              primaryGenreName: item.primaryGenreName || ""
+            };
+
+            // STRICT COMPATIBILITY VALIDATION
+            if (isSoundStrictlyCompatible(soundObj, moment)) {
+              seenIds.add(soundId);
+              collectedTracks.push(soundObj);
+              DYNAMIC_SOUNDS_CACHE[soundId] = soundObj;
+            }
+
+            if (collectedTracks.length >= 6) break;
+          }
+        }
+      } catch (err) {
+        console.warn("Live API query error:", q, err);
+      }
+      if (collectedTracks.length >= 3) break;
+    }
+
+    collectedTracks.sort((a, b) => (b.relevanceScore || 90) - (a.relevanceScore || 90));
+    const result = collectedTracks.slice(0, 3);
+    
+    if (result.length > 0) {
+      this.cache.set(cacheKey, result);
+    }
+    return result;
+  }
+}
+
+const dynamicSoundEngine = new DynamicSoundEngine();
+
+function getRecommendedSounds(moment, energy) {
+  // Pure strict catalog matches
+  const strictMatches = catalog.filter((s) => s.moments && s.moments.includes(moment) && isSoundStrictlyCompatible(s, moment));
+  
+  if (energy) {
+    const energyMatches = strictMatches.filter((s) => s.energy === energy);
+    if (energyMatches.length >= 2) return energyMatches.slice(0, 3);
+  }
+
+  if (strictMatches.length >= 3) return strictMatches.slice(0, 3);
+
+  // If fewer than 3, ONLY pull additional strictly compatible tracks (NEVER forbidden themes)
+  const additionalStrict = catalog.filter((s) => !strictMatches.includes(s) && isSoundStrictlyCompatible(s, moment));
+  return [...strictMatches, ...additionalStrict].slice(0, 3);
 }
 
 // 5. DOM References
@@ -1526,35 +2070,63 @@ function toggleHookCuePlay(sound, btnEl, cardRoot) {
   );
 }
 
-// 6. Render Post Match Cards
-function renderMatchCards() {
-  if (!grid || !template) return;
+// 6. Render Post Match Cards (Strict & Dynamic)
+let currentMatchRequestSeq = 0;
+
+function updateCardSaveStates() {
+  const vault = getSavedVault();
+  const currentBoardItems = vault[activeBoard] || [];
+  document.querySelectorAll("#sound-grid .sound-card").forEach((root) => {
+    const soundId = root.dataset.soundId;
+    const saveBtn = root.querySelector(".save");
+    if (saveBtn) {
+      const isSaved = currentBoardItems.includes(soundId);
+      saveBtn.classList.toggle("is-saved", isSaved);
+      saveBtn.textContent = isSaved ? "✓" : "＋";
+      saveBtn.setAttribute("aria-label", isSaved ? `Remove from ${activeBoard}` : `Save to ${activeBoard}`);
+    }
+  });
+}
+
+function renderSoundCardElements(sounds) {
+  if (!grid || !template || !template.content) return;
   grid.replaceChildren();
 
-  const currentEnergy = document.querySelector("#mood") ? document.querySelector("#mood").value : "soft";
-  const sounds = getRecommendedSounds(activeMoment, currentEnergy);
   const vault = getSavedVault();
   const currentBoardItems = vault[activeBoard] || [];
 
   sounds.forEach((sound, index) => {
     const card = template.content.cloneNode(true);
     const root = card.querySelector(".sound-card");
-    root.style.setProperty("--tone", `var(--${sound.tone})`);
+    root.style.setProperty("--tone", `var(--${sound.tone || "accent"})`);
     root.dataset.soundId = sound.id;
 
     card.querySelector(".art-number").textContent = String(index + 1).padStart(2, "0");
-    card.querySelector(".art-text").textContent = sound.art;
+    card.querySelector(".art-text").textContent = sound.art || "live viral";
     
     const stageEl = card.querySelector(".stage");
-    stageEl.textContent = sound.stage;
-    stageEl.className = `stage stage-${sound.stage.toLowerCase().replace(/\s+/g, "-")}`;
+    stageEl.textContent = sound.stage || "Rising";
+    stageEl.className = `stage stage-${(sound.stage || "rising").toLowerCase().replace(/\s+/g, "-")}`;
     
-    card.querySelector(".language").textContent = sound.language;
+    card.querySelector(".language").textContent = sound.language || "Indie";
+
+    // Match relevance badge
+    const relBadge = card.querySelector(".match-relevance-badge");
+    if (relBadge) {
+      if (sound.relevanceScore) {
+        relBadge.textContent = `${sound.relevanceScore}% Fit`;
+      } else if (sound.isDynamic) {
+        relBadge.textContent = "⚡ Live Viral";
+      } else {
+        relBadge.textContent = "✦ Verified Fit";
+      }
+    }
+
     card.querySelector("h3").textContent = sound.title;
     card.querySelector(".artist").textContent = sound.artist;
-    card.querySelector(".hook strong").textContent = sound.hook;
-    card.querySelector(".best-for").textContent = sound.best;
-    card.querySelector(".fresh p").textContent = sound.idea;
+    card.querySelector(".hook strong").textContent = sound.hook || "0:25 — 0:40";
+    card.querySelector(".best-for").textContent = sound.best || "";
+    card.querySelector(".fresh p").textContent = sound.idea || "";
 
     // Sound twins pill
     const twinsEl = card.querySelector(".sound-twins-info");
@@ -1601,7 +2173,7 @@ function renderMatchCards() {
 
     // Outbound link
     const openLink = card.querySelector(".open-link");
-    openLink.href = sound.outboundUrl;
+    openLink.href = sound.outboundUrl || `https://open.spotify.com/search/${encodeURIComponent(sound.title + " " + sound.artist)}`;
     openLink.target = "_blank";
     openLink.rel = "noopener noreferrer";
 
@@ -1613,6 +2185,80 @@ function renderMatchCards() {
 
     grid.append(card);
   });
+}
+
+async function renderMatchCards(customSounds = null) {
+  if (customSounds && Array.isArray(customSounds)) {
+    renderSoundCardElements(customSounds);
+    return;
+  }
+
+  const ideaInput = document.querySelector("#reel-idea-input");
+  const ideaText = ideaInput && ideaInput.value ? ideaInput.value.trim() : "";
+  const moodEl = document.querySelector("#mood");
+  const currentEnergy = moodEl && moodEl.value ? moodEl.value : "soft";
+
+  const seq = ++currentMatchRequestSeq;
+
+  // Auto-parse idea if provided
+  if (ideaText) {
+    const parsed = parseIdeaIntent(ideaText);
+    if (parsed) {
+      activeMoment = parsed.detectedMoment;
+      document.querySelectorAll(".chip").forEach((chip) => {
+        chip.classList.toggle("selected", chip.dataset.moment === activeMoment);
+      });
+      const clearBtn = document.querySelector("#idea-clear-btn");
+      if (clearBtn) clearBtn.classList.remove("hidden");
+    }
+  }
+
+  // Update match-note text
+  const matchNoteEl = document.querySelector("#match-note");
+  const selectedMomentEl = document.querySelector(".chip.selected");
+  const momentLabel = selectedMomentEl ? selectedMomentEl.textContent : activeMoment;
+  const moodSelect = document.querySelector("#mood");
+  const moodLabel = moodSelect ? moodSelect.selectedOptions[0].textContent : currentEnergy;
+
+  if (matchNoteEl) {
+    if (ideaText) {
+      matchNoteEl.innerHTML = `for your idea "<strong>${escapeHtml(ideaText)}</strong>" &amp; <strong>${momentLabel}</strong>`;
+    } else {
+      matchNoteEl.innerHTML = `for an <strong>${momentLabel}</strong> with a <strong>${moodLabel}</strong> mood`;
+    }
+  }
+
+  // Show live scanning indicator
+  const loadingIndicator = document.querySelector("#match-loading-indicator");
+  if (loadingIndicator) loadingIndicator.classList.remove("hidden");
+
+  try {
+    const sounds = await dynamicSoundEngine.fetchViralTracks(activeMoment, currentEnergy, ideaText);
+    
+    if (seq !== currentMatchRequestSeq) return;
+
+    if (sounds && sounds.length >= 3) {
+      renderSoundCardElements(sounds);
+    } else {
+      // Complement or fallback with strictly verified catalog tracks
+      const strictCatalog = catalog.filter((s) => isSoundStrictlyCompatible(s, activeMoment));
+      const existingIds = new Set((sounds || []).map((s) => s.id));
+      const needed = 3 - (sounds ? sounds.length : 0);
+      const fills = strictCatalog.filter((s) => !existingIds.has(s.id)).slice(0, needed);
+      const combined = [...(sounds || []), ...fills];
+      renderSoundCardElements(combined.length ? combined : strictCatalog.slice(0, 3));
+    }
+  } catch (err) {
+    console.warn("Live dynamic fetch error:", err);
+    if (seq === currentMatchRequestSeq) {
+      const fallbackSounds = catalog.filter((s) => isSoundStrictlyCompatible(s, activeMoment)).slice(0, 3);
+      renderSoundCardElements(fallbackSounds);
+    }
+  } finally {
+    if (seq === currentMatchRequestSeq && loadingIndicator) {
+      loadingIndicator.classList.add("hidden");
+    }
+  }
 }
 
 // 7. Render Today Editorial Drop (Product Brief Section 5) & Multi-Edition Archive
@@ -1939,7 +2585,7 @@ function toggleSaveSound(soundId, boardName) {
 
   setSavedVault(vault);
   renderVault();
-  renderMatchCards();
+  updateCardSaveStates();
 }
 
 function renderVault() {
@@ -1971,7 +2617,7 @@ function renderVault() {
         activeBoard = board;
         document.querySelector("#active-board-title").textContent = board;
         renderVault();
-        renderMatchCards();
+        updateCardSaveStates();
       });
       tabsContainer.append(btn);
     });
@@ -1988,7 +2634,7 @@ function renderVault() {
   }
 
   currentItems.forEach((id) => {
-    const sound = catalog.find((s) => s.id === id);
+    const sound = findSoundById(id);
     if (!sound) return;
 
     const row = document.createElement("article");
@@ -2062,30 +2708,89 @@ function searchSounds(query) {
 
 // 11. Initial Event Listeners
 document.addEventListener("DOMContentLoaded", () => {
-  // Moment chips selection
+  // 1. Moment chips selection
   document.querySelectorAll(".chip").forEach((chip) => {
     chip.addEventListener("click", () => {
       const current = document.querySelector(".chip.selected");
       if (current) current.classList.remove("selected");
       chip.classList.add("selected");
       activeMoment = chip.dataset.moment;
+
+      // If gym selected, automatically ensure energy is bold
+      const moodSelect = document.querySelector("#mood");
+      if (activeMoment === "gym" && moodSelect && moodSelect.value === "soft") {
+        moodSelect.value = "bold";
+      }
+
+      renderMatchCards();
     });
   });
 
-  // "Find my sounds" button
+  // 2. Free-text Idea Input & Clear Button
+  const ideaInput = document.querySelector("#reel-idea-input");
+  const ideaClearBtn = document.querySelector("#idea-clear-btn");
+
+  if (ideaInput) {
+    ideaInput.addEventListener("input", () => {
+      if (ideaClearBtn) {
+        ideaClearBtn.classList.toggle("hidden", !ideaInput.value.trim());
+      }
+    });
+
+    ideaInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        renderMatchCards();
+        const resultsSection = document.querySelector("#match-results");
+        if (resultsSection) {
+          resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }
+    });
+  }
+
+  if (ideaClearBtn) {
+    ideaClearBtn.addEventListener("click", () => {
+      if (ideaInput) {
+        ideaInput.value = "";
+        ideaInput.focus();
+      }
+      ideaClearBtn.classList.add("hidden");
+      renderMatchCards();
+    });
+  }
+
+  // 3. Quick Idea Presets
+  document.querySelectorAll(".idea-preset-chip").forEach((preset) => {
+    preset.addEventListener("click", () => {
+      if (ideaInput) {
+        ideaInput.value = preset.dataset.idea;
+      }
+      if (ideaClearBtn) {
+        ideaClearBtn.classList.remove("hidden");
+      }
+      if (preset.dataset.moment) {
+        activeMoment = preset.dataset.moment;
+        document.querySelectorAll(".chip").forEach((chip) => {
+          chip.classList.toggle("selected", chip.dataset.moment === activeMoment);
+        });
+      }
+      if (preset.dataset.energy) {
+        const moodSelect = document.querySelector("#mood");
+        if (moodSelect) moodSelect.value = preset.dataset.energy;
+      }
+      renderMatchCards();
+      const resultsSection = document.querySelector("#match-results");
+      if (resultsSection) {
+        resultsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  });
+
+  // 4. "Find my sounds" button
   const findBtn = document.querySelector("#find-sounds");
   if (findBtn) {
     findBtn.addEventListener("click", () => {
-      const selectedMomentEl = document.querySelector(".chip.selected");
-      const selectedMoment = selectedMomentEl ? selectedMomentEl.textContent.toLowerCase() : "outfit reveal";
-      const moodSelect = document.querySelector("#mood");
-      const selectedMood = moodSelect ? moodSelect.selectedOptions[0].textContent.toLowerCase() : "soft & cinematic";
-      
-      const note = document.querySelector(".match-note");
-      if (note) {
-        note.innerHTML = `for an <strong>${selectedMoment}</strong> with a <strong>${selectedMood}</strong> mood`;
-      }
-      
       renderMatchCards();
       const resultsSection = document.querySelector("#match-results");
       if (resultsSection) {
@@ -2094,7 +2799,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Energy dropdown change re-renders match
+  // 5. Energy dropdown change re-renders match
   const moodEl = document.querySelector("#mood");
   if (moodEl) {
     moodEl.addEventListener("change", () => {
@@ -2193,7 +2898,7 @@ function getTastePassportData() {
     };
   }
 
-  const tracks = allIds.map((id) => catalog.find((s) => s.id === id)).filter(Boolean);
+  const tracks = allIds.map((id) => findSoundById(id)).filter(Boolean);
   const total = tracks.length;
 
   const sceneCounts = {};
@@ -2360,7 +3065,7 @@ function openShareBoardModal(boardName) {
   if (!shareModal || !shareBody) return;
   const vault = getSavedVault();
   const soundIds = vault[boardName] || [];
-  const tracks = soundIds.map((id) => catalog.find((s) => s.id === id)).filter(Boolean);
+  const tracks = soundIds.map((id) => findSoundById(id)).filter(Boolean);
 
   if (!tracks.length) {
     shareBody.innerHTML = `
@@ -3238,7 +3943,7 @@ function openSpotifySyncModal(boardName) {
   const board = boardName || activeBoard;
   const vault = getSavedVault();
   const soundIds = vault[board] || [];
-  const tracks = soundIds.map((id) => catalog.find((s) => s.id === id)).filter(Boolean);
+  const tracks = soundIds.map((id) => findSoundById(id)).filter(Boolean);
 
   if (!tracks.length) {
     spotifySyncBody.innerHTML = `

@@ -48,7 +48,29 @@
         </div>
 
         <div class="prompt-box">
-          <div class="step"><span>01</span><label>Pick your moment</label></div>
+          <!-- Step 01: Free-text Idea Prompt -->
+          <div class="step"><span>01</span><label for="reel-idea-input">Describe your reel idea or concept</label></div>
+          <div class="idea-input-row">
+            <div class="idea-field-wrap">
+              <span class="idea-input-icon">✦</span>
+              <input type="text" id="reel-idea-input" placeholder="e.g. Heavy deadlift PR with dramatic slow-mo chalk drop, or monsoon chai on balcony..." autocomplete="off" />
+              <button type="button" class="idea-clear-btn hidden" id="idea-clear-btn" aria-label="Clear idea input">✕</button>
+            </div>
+            <button class="find-button" id="find-sounds">Find Viral Match <span>↗</span></button>
+          </div>
+
+          <!-- Quick Idea Presets -->
+          <div class="idea-presets-strip" id="idea-presets-strip">
+            <span class="presets-label">Quick ideas:</span>
+            <button type="button" class="idea-preset-chip" data-idea="Heavy PR deadlift edit with bass drop" data-moment="gym" data-energy="bold">🏋️ PR Deadlift Drop</button>
+            <button type="button" class="idea-preset-chip" data-idea="Aesthetic golden hour mirror outfit reveal" data-moment="outfit" data-energy="soft">✨ Golden Hour Fit</button>
+            <button type="button" class="idea-preset-chip" data-idea="Rainy monsoon balcony chai lo-fi view" data-moment="late-night" data-energy="nostalgic">☕ Monsoon Balcony Chai</button>
+            <button type="button" class="idea-preset-chip" data-idea="Late night solo car drive through city lights" data-moment="travel" data-energy="bold">🏎️ Midnight Drive</button>
+            <button type="button" class="idea-preset-chip" data-idea="High energy Punjabi wedding sangeet baraat entry" data-moment="wedding" data-energy="chaotic">🥁 Sangeet Baraat Entry</button>
+          </div>
+
+          <!-- Step 02: Moment Chips -->
+          <div class="step step-two"><span>02</span><label>Or pick moment & energy</label></div>
           <div class="chips" role="group" aria-label="Posting moment">
             <button class="chip selected" data-moment="outfit">Outfit reveal</button>
             <button class="chip" data-moment="travel">Travel dump</button>
@@ -72,7 +94,10 @@
                 <option value="chaotic">Chaotic good</option>
               </select>
             </div>
-            <button class="find-button" id="find-sounds">Find my sounds <span>↗</span></button>
+            <div class="engine-mode-tag" id="engine-mode-tag">
+              <span class="live-pulse"></span>
+              <span class="engine-mode-text">Dynamic Trend Engine Active</span>
+            </div>
           </div>
         </div>
       </section>
@@ -81,13 +106,26 @@
       <section class="results" id="match-results" aria-live="polite">
         <div class="section-heading">
           <div>
-            <p class="eyebrow"><span></span> Your three, right now</p>
-            <p class="match-note">for an <strong>outfit reveal</strong> with a <strong>soft & cinematic</strong> mood</p>
+            <p class="eyebrow"><span class="live-indicator-dot"></span> Your three, right now</p>
+            <p class="match-note" id="match-note">for an <strong>outfit reveal</strong> with a <strong>soft & cinematic</strong> mood</p>
           </div>
-          <a class="jump-today-link" href="#today">See today's editorial drop ↓</a>
+          <div class="results-meta-actions">
+            <span class="dynamic-badge" id="dynamic-source-badge">⚡ Live Trend Engine</span>
+            <a class="jump-today-link" href="#today">See today's editorial drop ↓</a>
+          </div>
         </div>
+
+        <!-- Live Scanning Indicator -->
+        <div class="match-loading-indicator hidden" id="match-loading-indicator">
+          <div class="scanning-spinner"></div>
+          <div class="scanning-text">
+            <strong>Scanning live Indian music corridors...</strong>
+            <p>Fetching real viral reel audio streams with strict anti-affinity filtering</p>
+          </div>
+        </div>
+
         <div class="sound-grid" id="sound-grid"></div>
-        <p class="fine-print">Curated, not scraped. Trend labels blend editorial discernment and observable cultural signals.</p>
+        <p class="fine-print">Curated & dynamically matched in real time. Strictly filtered against creative anti-affinities.</p>
       </section>
 
       <!-- 3. Today Editorial Drop (Product Brief Section 5) -->
@@ -322,6 +360,7 @@
           <div class="meta">
             <span class="stage"></span>
             <span class="language"></span>
+            <span class="match-relevance-badge"></span>
           </div>
           <h3></h3>
           <p class="artist"></p>
@@ -491,6 +530,6 @@
     <!-- Floating Toast Notification -->
     <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
-    <script src="app.js?v=2.1"></script>
+    <script src="app.js?v=3.0"></script>
   </body>
 </html>
