@@ -3397,8 +3397,119 @@ async function searchSounds(query) {
   if (thisSeq !== currentSearchSeq) return; // Stale query check
   searchResults.replaceChildren();
 
-  if (!matches.length) {
-    searchResults.innerHTML = '<p class="search-empty">No matching sound found. Try searching for a language (Tamil, Punjabi, Malayalam), scene, or post type (gym, outfit, wedding, travel).</p>';
+  // Studio Workflow Action Commands (Task F: Command Teleportation)
+  const queryStr = trimmed.toLowerCase();
+  const actionCommands = [];
+
+  if (/radar|intel|scout|velocity|claim|dossier/.test(queryStr)) {
+    actionCommands.push({
+      title: "Launch Artist Radar & Intel Dossier",
+      desc: "Live velocity scores (0-100), creator tiers, and regional scout telemetry",
+      badge: "Jump (4)",
+      target: "#radar"
+    });
+  }
+  if (/vault|export|cue|sheet|premiere|capcut|board|moodboard/.test(queryStr)) {
+    actionCommands.push({
+      title: "Open The Vault & Multi-Ratio Exporters",
+      desc: "16:9 / 1:1 / 9:16 high-res graphic canvas cards and production cue sheets",
+      badge: "Jump (5)",
+      target: "#vault"
+    });
+  }
+  if (/today|drop|editorial|twin|a\/b|swap|archive|curat/.test(queryStr)) {
+    actionCommands.push({
+      title: "Explore Today's Editorial Drops & Sound Twins",
+      desc: "5 daily archetypes with instantaneous A/B acoustic twin switcher",
+      badge: "Jump (2)",
+      target: "#today"
+    });
+  }
+  if (/route|map|migration|corridor|city|origin|scene/.test(queryStr)) {
+    actionCommands.push({
+      title: "View Regional Sound Routes & Migration Arcs",
+      desc: "Interactive multi-node cultural corridors from Majha to besant nagar",
+      badge: "Jump (3)",
+      target: "#routes"
+    });
+  }
+  if (/match|pacing|bpm|slow-mo|fast|lifestyle|idea/.test(queryStr)) {
+    actionCommands.push({
+      title: "Post Match Engine & BPM Video Pacing",
+      desc: "Describe reel idea or filter by video cutting cadence (<90, 95-115, >125 BPM)",
+      badge: "Jump (1)",
+      target: "#match"
+    });
+  }
+  if (/tour|guide|walkthrough|overview|help|feature/.test(queryStr)) {
+    actionCommands.push({
+      title: "Start 60-Second Interactive Studio Tour",
+      desc: "Guided 5-step visual walkthrough of all creator capabilities",
+      badge: "Guide",
+      action: "open-tour"
+    });
+  }
+  if (/shortcut|keyboard|hotkey|key/.test(queryStr)) {
+    actionCommands.push({
+      title: "Mehfil Keyboard Shortcuts Directory",
+      desc: "View 1-5, ⌘K, Alt+T, Space, and Esc power shortcuts",
+      badge: "Keys (?)",
+      action: "open-shortcuts"
+    });
+  }
+  if (/theme|dark|midnight|light|paper|mode/.test(queryStr)) {
+    actionCommands.push({
+      title: "Toggle Midnight Studio / Paper Editorial Theme",
+      desc: "Switch high-contrast dark aesthetic or organic paper typography",
+      badge: "Alt+T",
+      action: "toggle-theme"
+    });
+  }
+  if (/spotify|sync|playlist/.test(queryStr)) {
+    actionCommands.push({
+      title: "Sync Saved Vault to Spotify Playlist",
+      desc: "One-click live playlist generator for official streaming services",
+      badge: "Export",
+      action: "spotify-sync"
+    });
+  }
+
+  // Render Action Commands if any matched
+  if (actionCommands.length > 0) {
+    const actionBlock = document.createElement("div");
+    actionBlock.className = "search-action-commands";
+    actionBlock.innerHTML = `<div class="search-action-commands-header">✦ STUDIO ACTIONS &amp; SHORTCUTS</div>`;
+    actionCommands.forEach((cmd) => {
+      const cmdRow = document.createElement("div");
+      cmdRow.className = "search-action-row";
+      cmdRow.innerHTML = `
+        <div class="search-action-info">
+          <div class="search-action-title">✦ ${cmd.title}</div>
+          <span class="search-action-desc">${cmd.desc}</span>
+        </div>
+        <span class="search-action-badge">${cmd.badge}</span>
+      `;
+      cmdRow.addEventListener("click", () => {
+        if (cmd.target && typeof teleportTo === "function") {
+          teleportTo(cmd.target);
+        } else if (cmd.action === "open-tour" && typeof openStudioTourModal === "function") {
+          openStudioTourModal(0);
+        } else if (cmd.action === "open-shortcuts" && typeof openKeyboardShortcutsModal === "function") {
+          openKeyboardShortcutsModal();
+        } else if (cmd.action === "toggle-theme") {
+          const toggleBtn = document.querySelector("#theme-toggle-btn");
+          if (toggleBtn) toggleBtn.click();
+        } else if (cmd.action === "spotify-sync" && typeof openSpotifySyncModal === "function") {
+          openSpotifySyncModal(activeBoard);
+        }
+      });
+      actionBlock.appendChild(cmdRow);
+    });
+    searchResults.appendChild(actionBlock);
+  }
+
+  if (!matches.length && !actionCommands.length) {
+    searchResults.innerHTML = '<p class="search-empty">No matching sound or studio action found. Try searching for a language (Tamil, Punjabi, Malayalam), scene, post type (gym, outfit, wedding), or feature (radar, vault, tour, theme).</p>';
     return;
   }
 
@@ -6198,8 +6309,297 @@ document.addEventListener("keydown", (e) => {
     closeSpotifySyncModal();
     closeClaimModal();
     closeRadarExportModal();
+    closeStudioTourModal();
+    closeKeyboardShortcutsModal();
   }
 });
+
+// ==========================================================================
+// TASK F: STUDIO DISCOVERY, NAVIGATION & HUD CONTROLLER
+// ==========================================================================
+
+let currentTourSlide = 0;
+
+function updateActiveNavState(activeSelector) {
+  if (!activeSelector) return;
+  document.querySelectorAll(".hud-item[data-teleport]").forEach((item) => {
+    if (item.getAttribute("data-teleport") === activeSelector) {
+      item.classList.add("active");
+    } else {
+      item.classList.remove("active");
+    }
+  });
+
+  document.querySelectorAll(".capability-pill[data-teleport]").forEach((pill) => {
+    if (pill.getAttribute("data-teleport") === activeSelector) {
+      pill.classList.add("active");
+    } else {
+      pill.classList.remove("active");
+    }
+  });
+}
+
+function teleportTo(selector, action) {
+  if (action === "spotify-sync") {
+    if (typeof openSpotifySyncModal === "function") openSpotifySyncModal(activeBoard);
+    return;
+  }
+  if (action === "batch-blueprint") {
+    if (typeof copyBatchBlueprints === "function") copyBatchBlueprints(activeBoard);
+    return;
+  }
+
+  if (!selector) return;
+  const target = document.querySelector(selector);
+  if (!target) return;
+
+  // Close tour or shortcuts modals if open
+  closeStudioTourModal();
+  closeKeyboardShortcutsModal();
+
+  // Momentum scroll via Lenis or fallback to native smooth scroll
+  if (typeof lenisInstance !== "undefined" && lenisInstance && typeof lenisInstance.scrollTo === "function") {
+    lenisInstance.scrollTo(target, { offset: -74, duration: 1.15 });
+  } else {
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  // Visual pulse highlight anchor
+  target.classList.remove("highlight-target-pulse");
+  void target.offsetWidth; // force DOM reflow
+  target.classList.add("highlight-target-pulse");
+  setTimeout(() => {
+    target.classList.remove("highlight-target-pulse");
+  }, 1600);
+
+  updateActiveNavState(selector);
+}
+
+function initStudioHUD() {
+  // 1. Wire all data-teleport elements (HUD & Capability strip)
+  document.querySelectorAll("[data-teleport]").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      // If it's a tour slide teleport button, let tour handler process it
+      if (el.classList.contains("tour-teleport-btn")) return;
+      e.preventDefault();
+      const target = el.getAttribute("data-teleport");
+      if (target) teleportTo(target);
+    });
+  });
+
+  // 2. Wire capability action buttons
+  document.querySelectorAll(".capability-pill[data-action]").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
+      const action = el.getAttribute("data-action");
+      if (action) teleportTo(null, action);
+    });
+  });
+
+  // 3. Viewport scroll tracking for active section state
+  const sectionIds = ["#match", "#today", "#routes", "#radar", "#vault"];
+  const sections = sectionIds.map((id) => document.querySelector(id)).filter(Boolean);
+
+  if ("IntersectionObserver" in window && sections.length) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            updateActiveNavState("#" + entry.target.id);
+          }
+        });
+      },
+      {
+        threshold: 0.25,
+        rootMargin: "-10% 0px -40% 0px"
+      }
+    );
+    sections.forEach((s) => observer.observe(s));
+  }
+}
+
+// 60-Second Studio Feature Tour Modal Controller
+function setTourSlide(index) {
+  const tourTabs = document.querySelectorAll(".tour-tab");
+  const tourSlides = document.querySelectorAll(".tour-slide");
+  const tourDots = document.querySelectorAll(".tour-dot");
+  const tourStepPill = document.querySelector("#tour-step-pill");
+  const tourPrevBtn = document.querySelector("#tour-prev-btn");
+  const tourNextBtn = document.querySelector("#tour-next-btn");
+
+  if (!tourSlides.length) return;
+  if (index < 0) index = 0;
+  if (index >= tourSlides.length) index = tourSlides.length - 1;
+  currentTourSlide = index;
+
+  tourTabs.forEach((tab, i) => tab.classList.toggle("active", i === index));
+  tourSlides.forEach((slide, i) => slide.classList.toggle("active", i === index));
+  tourDots.forEach((dot, i) => dot.classList.toggle("active", i === index));
+
+  if (tourStepPill) {
+    tourStepPill.textContent = `FEATURE ${index + 1} OF ${tourSlides.length}`;
+  }
+  if (tourPrevBtn) {
+    tourPrevBtn.disabled = index === 0;
+  }
+  if (tourNextBtn) {
+    tourNextBtn.textContent = index === tourSlides.length - 1 ? "Done ✓" : "Next Step →";
+  }
+}
+
+function openStudioTourModal(initialSlide = 0) {
+  const tourModal = document.querySelector("#tour-modal");
+  if (!tourModal) return;
+  setTourSlide(initialSlide);
+  tourModal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
+
+function closeStudioTourModal() {
+  const tourModal = document.querySelector("#tour-modal");
+  if (!tourModal || tourModal.classList.contains("hidden")) return;
+  tourModal.classList.add("hidden");
+  document.body.style.overflow = "";
+}
+
+function initStudioTourModal() {
+  const openTourBtn = document.querySelector("#open-tour-btn");
+  const heroTourTrigger = document.querySelector("#hero-tour-trigger");
+  const hudTourBtn = document.querySelector("#hud-tour-btn");
+  const closeTourBtn = document.querySelector("#close-tour-btn");
+  const tourBackdrop = document.querySelector("#tour-modal-backdrop");
+  const tourPrevBtn = document.querySelector("#tour-prev-btn");
+  const tourNextBtn = document.querySelector("#tour-next-btn");
+
+  if (openTourBtn) openTourBtn.addEventListener("click", () => openStudioTourModal(0));
+  if (heroTourTrigger) heroTourTrigger.addEventListener("click", () => openStudioTourModal(0));
+  if (hudTourBtn) hudTourBtn.addEventListener("click", () => openStudioTourModal(0));
+  if (closeTourBtn) closeTourBtn.addEventListener("click", closeStudioTourModal);
+  if (tourBackdrop) tourBackdrop.addEventListener("click", closeStudioTourModal);
+
+  document.querySelectorAll(".tour-tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const idx = parseInt(tab.dataset.slide, 10);
+      if (!isNaN(idx)) setTourSlide(idx);
+    });
+  });
+
+  document.querySelectorAll(".tour-dot").forEach((dot) => {
+    dot.addEventListener("click", () => {
+      const idx = parseInt(dot.dataset.slide, 10);
+      if (!isNaN(idx)) setTourSlide(idx);
+    });
+  });
+
+  if (tourPrevBtn) {
+    tourPrevBtn.addEventListener("click", () => {
+      if (currentTourSlide > 0) setTourSlide(currentTourSlide - 1);
+    });
+  }
+
+  if (tourNextBtn) {
+    tourNextBtn.addEventListener("click", () => {
+      const tourSlides = document.querySelectorAll(".tour-slide");
+      if (currentTourSlide < tourSlides.length - 1) {
+        setTourSlide(currentTourSlide + 1);
+      } else {
+        closeStudioTourModal();
+        showToast("✦ Studio tour complete! Use the bottom HUD (1-5) to jump anytime.");
+      }
+    });
+  }
+
+  document.querySelectorAll(".tour-teleport-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const target = btn.getAttribute("data-teleport");
+      if (target) {
+        closeStudioTourModal();
+        teleportTo(target);
+      }
+    });
+  });
+}
+
+// Keyboard Shortcuts Modal & Global Keybindings Controller
+function openKeyboardShortcutsModal() {
+  const shortcutsModal = document.querySelector("#shortcuts-modal");
+  if (!shortcutsModal) return;
+  shortcutsModal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
+
+function closeKeyboardShortcutsModal() {
+  const shortcutsModal = document.querySelector("#shortcuts-modal");
+  if (!shortcutsModal || shortcutsModal.classList.contains("hidden")) return;
+  shortcutsModal.classList.add("hidden");
+  document.body.style.overflow = "";
+}
+
+function initKeyboardShortcuts() {
+  const closeShortcutsBtn = document.querySelector("#close-shortcuts-btn");
+  const shortcutsBackdrop = document.querySelector("#shortcuts-modal-backdrop");
+
+  if (closeShortcutsBtn) closeShortcutsBtn.addEventListener("click", closeKeyboardShortcutsModal);
+  if (shortcutsBackdrop) shortcutsBackdrop.addEventListener("click", closeKeyboardShortcutsModal);
+
+  document.addEventListener("keydown", (e) => {
+    // Skip single-key shortcuts when typing in inputs/textareas
+    const tag = e.target && e.target.tagName ? e.target.tagName.toLowerCase() : "";
+    const isTyping = tag === "input" || tag === "textarea" || tag === "select" || (e.target && e.target.isContentEditable);
+
+    if (e.key === "Escape") {
+      closeStudioTourModal();
+      closeKeyboardShortcutsModal();
+      return;
+    }
+
+    if (isTyping) return;
+
+    if (e.key === "1") {
+      e.preventDefault();
+      teleportTo("#match");
+      showToast("📍 1: Post Match Engine");
+    } else if (e.key === "2") {
+      e.preventDefault();
+      teleportTo("#today");
+      showToast("📍 2: Today Editorial Drops");
+    } else if (e.key === "3") {
+      e.preventDefault();
+      teleportTo("#routes");
+      showToast("📍 3: Sound Routes Map");
+    } else if (e.key === "4") {
+      e.preventDefault();
+      teleportTo("#radar");
+      showToast("📍 4: Artist Radar & Intel");
+    } else if (e.key === "5") {
+      e.preventDefault();
+      teleportTo("#vault");
+      showToast("📍 5: The Vault & Exporters");
+    } else if (e.key === "?" || (e.shiftKey && e.key === "/")) {
+      e.preventDefault();
+      const modal = document.querySelector("#shortcuts-modal");
+      if (modal && !modal.classList.contains("hidden")) {
+        closeKeyboardShortcutsModal();
+      } else {
+        openKeyboardShortcutsModal();
+      }
+    } else if (e.code === "Space") {
+      if (typeof audioEngine !== "undefined") {
+        e.preventDefault();
+        if (audioEngine.isPlaying) {
+          audioEngine.pause();
+          showToast("⏸ Audio paused");
+        } else if (audioEngine.currentSound) {
+          audioEngine.resume();
+          showToast(`▶ Resumed "${audioEngine.currentSound.title}"`);
+        } else if (catalog && catalog.length) {
+          audioEngine.cue(catalog[0]);
+          showToast(`▶ Playing "${catalog[0].title}"`);
+        }
+      }
+    }
+  });
+}
 
 // Run initial setups
 attachPhase2Listeners();
@@ -6217,5 +6617,11 @@ initVelocityMarquee();
 initMagneticButtons();
 initRouteMapVectorAnimation();
 initRadarCounterAnimations();
+
+// Initialize Studio Discovery & HUD Navigation Suite
+initStudioHUD();
+initStudioTourModal();
+initKeyboardShortcuts();
+
 
 

@@ -35,6 +35,9 @@
         <a class="nav-link" href="#vault">Your vault <span class="saved-count">0</span></a>
       </nav>
       <div class="topbar-right">
+        <button class="top-tour-btn" id="open-tour-btn" type="button" aria-label="Studio Feature Guide" title="Interactive Studio Feature Guide (?)">
+          <span class="tour-spark">✦</span> Studio Guide
+        </button>
         <button class="theme-toggle-btn" id="theme-toggle-btn" type="button" aria-label="Toggle Midnight Studio Theme" title="Toggle Midnight Theme (Alt+T)">
           <span class="theme-icon">🌙</span> <span class="theme-label">Midnight</span>
         </button>
@@ -161,6 +164,24 @@
               <span class="live-pulse"></span>
               <span class="engine-mode-text">Dynamic Trend Engine Active</span>
             </div>
+          </div>
+        </div>
+
+        <!-- Studio Directory / Feature Compass Bar -->
+        <div class="studio-capabilities-strip" aria-label="Studio Feature Directory">
+          <div class="capabilities-header">
+            <span class="capabilities-tag">✦ STUDIO DIRECTORY</span>
+            <span class="capabilities-hint">Jump to any creator workflow:</span>
+          </div>
+          <div class="capabilities-pills">
+            <button type="button" class="capability-pill active" data-teleport="#match">🎯 Post Match &amp; BPM</button>
+            <button type="button" class="capability-pill" data-teleport="#today">⚡ Today Drops &amp; Twins</button>
+            <button type="button" class="capability-pill" data-teleport="#routes">🗺️ Regional Sound Routes</button>
+            <button type="button" class="capability-pill" data-teleport="#radar">📡 Artist Radar &amp; Intel</button>
+            <button type="button" class="capability-pill" data-teleport="#vault">📁 Vault &amp; Multi-Ratio Exporters</button>
+            <button type="button" class="capability-pill" data-action="spotify-sync">🎵 Spotify Sync</button>
+            <button type="button" class="capability-pill" data-action="batch-blueprint">📋 Batch Blueprints</button>
+            <button type="button" class="capability-pill highlight-tour" id="hero-tour-trigger">✦ 60s Interactive Tour ↗</button>
           </div>
         </div>
       </section>
@@ -660,6 +681,188 @@
             <span class="submit-policy-note">Verified within 24 hours. Connects directly to your official streaming royalties.</span>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Floating Studio HUD Navigator Island (Awwwards Ergonomic Quick-Nav) -->
+    <nav class="studio-hud" id="studio-hud" aria-label="Studio Quick Navigation">
+      <button type="button" class="hud-item active" data-teleport="#match" title="Post Match Engine (Press 1)">
+        <span class="hud-badge">1</span>
+        <span class="hud-label">Match</span>
+      </button>
+      <button type="button" class="hud-item" data-teleport="#today" title="Today Drops &amp; Twins (Press 2)">
+        <span class="hud-badge">2</span>
+        <span class="hud-label">Today</span>
+      </button>
+      <button type="button" class="hud-item" data-teleport="#routes" title="Geographic Sound Routes (Press 3)">
+        <span class="hud-badge">3</span>
+        <span class="hud-label">Routes</span>
+      </button>
+      <button type="button" class="hud-item" data-teleport="#radar" title="Artist Radar &amp; Intel (Press 4)">
+        <span class="hud-badge">4</span>
+        <span class="hud-label">Radar</span>
+      </button>
+      <button type="button" class="hud-item" data-teleport="#vault" title="The Vault &amp; Exporters (Press 5)">
+        <span class="hud-badge">5</span>
+        <span class="hud-label">Vault</span>
+      </button>
+      <div class="hud-divider"></div>
+      <button type="button" class="hud-item hud-guide-btn" id="hud-tour-btn" title="60s Studio Guide &amp; Shortcuts (?)">
+        <span class="hud-icon">✦</span>
+        <span class="hud-label">Guide</span>
+      </button>
+    </nav>
+
+    <!-- Interactive 60-Second Studio Feature Tour Modal -->
+    <div id="tour-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="tour-modal-title">
+      <div class="modal-backdrop" id="tour-modal-backdrop"></div>
+      <div class="modal-card tour-modal-card">
+        <button type="button" class="modal-close" id="close-tour-btn" aria-label="Close Feature Tour">×</button>
+        
+        <div class="tour-header">
+          <div class="tour-header-meta">
+            <span class="tour-step-pill" id="tour-step-pill">FEATURE 1 OF 5</span>
+            <span class="tour-timer-pill">⏱ 60s Studio Tour</span>
+          </div>
+          <h3 id="tour-modal-title">Explore Mehfil's Studio Engine</h3>
+          <p class="tour-subtitle">Everything you need to discover sound culture before it becomes algorithmic noise.</p>
+        </div>
+
+        <!-- Interactive Tab Selector -->
+        <div class="tour-tabs" role="tablist">
+          <button type="button" class="tour-tab active" data-slide="0">01 Match</button>
+          <button type="button" class="tour-tab" data-slide="1">02 Today</button>
+          <button type="button" class="tour-tab" data-slide="2">03 Routes</button>
+          <button type="button" class="tour-tab" data-slide="3">04 Radar</button>
+          <button type="button" class="tour-tab" data-slide="4">05 Vault</button>
+        </div>
+
+        <div class="tour-carousel-viewport">
+          <div class="tour-slides-track" id="tour-slides-track">
+            <!-- Slide 01: Post Match -->
+            <div class="tour-slide active">
+              <div class="tour-slide-visual">
+                <div class="visual-badge">🎯 POST MATCH &amp; BPM PACING</div>
+                <h4>Type Your Reel Idea or Pacing</h4>
+                <p>Type any natural language idea (e.g. <em>"Heavy PR deadlift chalk drop"</em> or <em>"Monsoon chai on balcony"</em>). Our Strict Semantic Anti-Affinity Engine finds viral regional tracks tailored to your exact video pacing: <strong>Slow-Mo (&lt;90 BPM)</strong>, <strong>Lifestyle (95-115 BPM)</strong>, or <strong>Fast-Cut (&gt;125 BPM)</strong>.</p>
+                <div class="tour-slide-tags">
+                  <span>✦ Free-Text Reel Matcher</span>
+                  <span>✦ 10 Creator Moments</span>
+                  <span>✦ BPM Video Pacing</span>
+                </div>
+              </div>
+              <div class="tour-slide-action">
+                <button type="button" class="tour-teleport-btn" data-teleport="#match">Take Me To Match Engine →</button>
+              </div>
+            </div>
+
+            <!-- Slide 02: Today Drops -->
+            <div class="tour-slide">
+              <div class="tour-slide-visual">
+                <div class="visual-badge">⚡ TODAY EDITORIAL &amp; TWINS</div>
+                <h4>Replace Tired Viral Songs with Fresh Twins</h4>
+                <p>Five daily curated drops across 5 archetypes (<em>Use Now, Rising, Retro, Indie Find, Saturated Alt</em>). If a mainstream song is burning out, use our <strong>Sound Twin A/B Switcher</strong> to instantly preview a fresh regional underground alternative with identical sonic energy.</p>
+                <div class="tour-slide-tags">
+                  <span>✦ 5 Editorial Archetypes</span>
+                  <span>✦ Sound Twin A/B Audio</span>
+                  <span>✦ Multi-Edition Archives</span>
+                </div>
+              </div>
+              <div class="tour-slide-action">
+                <button type="button" class="tour-teleport-btn" data-teleport="#today">Explore Today's Drops →</button>
+              </div>
+            </div>
+
+            <!-- Slide 03: Sound Routes -->
+            <div class="tour-slide">
+              <div class="tour-slide-visual">
+                <div class="visual-badge">🗺️ REGIONAL SOUND ROUTES</div>
+                <h4>Trace Cultural Audio Migration Arcs</h4>
+                <p>Understand how regional music travels across India. Follow paths from underground street cyphers in Majha or Besant Nagar indie studios to college campus virality and national Bollywood crossover.</p>
+                <div class="tour-slide-tags">
+                  <span>✦ Interactive Map Arcs</span>
+                  <span>✦ 3-Node Migration Paths</span>
+                  <span>✦ Regional Scene Explorer</span>
+                </div>
+              </div>
+              <div class="tour-slide-action">
+                <button type="button" class="tour-teleport-btn" data-teleport="#routes">View Sound Routes Map →</button>
+              </div>
+            </div>
+
+            <!-- Slide 04: Artist Radar -->
+            <div class="tour-slide">
+              <div class="tour-slide-visual">
+                <div class="visual-badge">📡 ARTIST RADAR &amp; INTEL</div>
+                <h4>Music Intelligence for Artists &amp; Scouts</h4>
+                <p>Dedicated dashboard measuring pre-saturation velocity scores, creative runway percentages, creator tiers, and regional hotspots. Export complete executive intelligence dossiers in <strong>CSV, Markdown, or JSON</strong>.</p>
+                <div class="tour-slide-tags">
+                  <span>✦ Velocity Scores (0-100)</span>
+                  <span>✦ Profile Claim &amp; Verify</span>
+                  <span>✦ CSV / Markdown / JSON Export</span>
+                </div>
+              </div>
+              <div class="tour-slide-action">
+                <button type="button" class="tour-teleport-btn" data-teleport="#radar">Launch Artist Radar →</button>
+              </div>
+            </div>
+
+            <!-- Slide 05: The Vault & Exporters -->
+            <div class="tour-slide">
+              <div class="tour-slide-visual">
+                <div class="visual-badge">📁 THE VAULT &amp; EXPORTERS</div>
+                <h4>Production Exporters, Cue Sheets &amp; Spotify</h4>
+                <p>Create and organize themed moodboards. Export high-res graphic cards in <strong>16:9 Desktop</strong>, <strong>1:1 Square</strong>, or <strong>9:16 Story</strong>. Generate one-click production cue sheets for Premiere &amp; CapCut, or sync your saved board directly to Spotify!</p>
+                <div class="tour-slide-tags">
+                  <span>✦ Multi-Board Management</span>
+                  <span>✦ 16:9 / 1:1 / 9:16 Canvas PNG</span>
+                  <span>✦ 1-Click Spotify Playlist Sync</span>
+                </div>
+              </div>
+              <div class="tour-slide-action">
+                <button type="button" class="tour-teleport-btn" data-teleport="#vault">Open The Vault &amp; Exporters →</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tour Navigation Controls -->
+        <div class="tour-footer-controls">
+          <button type="button" class="tour-nav-prev" id="tour-prev-btn" disabled>← Previous</button>
+          <div class="tour-dots" id="tour-dots">
+            <span class="tour-dot active" data-slide="0"></span>
+            <span class="tour-dot" data-slide="1"></span>
+            <span class="tour-dot" data-slide="2"></span>
+            <span class="tour-dot" data-slide="3"></span>
+            <span class="tour-dot" data-slide="4"></span>
+          </div>
+          <button type="button" class="tour-nav-next" id="tour-next-btn">Next Step →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Modal -->
+    <div id="shortcuts-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="shortcuts-modal-title">
+      <div class="modal-backdrop" id="shortcuts-modal-backdrop"></div>
+      <div class="modal-card shortcuts-modal-card">
+        <button type="button" class="modal-close" id="close-shortcuts-btn" aria-label="Close Shortcuts">×</button>
+        <div class="shortcuts-header">
+          <span class="shortcuts-tag">⌨️ QUICK POWER KEYS</span>
+          <h3 id="shortcuts-modal-title">Mehfil Keyboard Shortcuts</h3>
+          <p>Navigate and control studio workflows with rapid single-key commands.</p>
+        </div>
+        <div class="shortcuts-grid">
+          <div class="shortcut-row"><kbd>1</kbd> <span>Jump to Post Match Engine</span></div>
+          <div class="shortcut-row"><kbd>2</kbd> <span>Jump to Today Editorial Drops</span></div>
+          <div class="shortcut-row"><kbd>3</kbd> <span>Jump to Regional Sound Routes</span></div>
+          <div class="shortcut-row"><kbd>4</kbd> <span>Jump to Artist Radar &amp; Intel</span></div>
+          <div class="shortcut-row"><kbd>5</kbd> <span>Jump to The Vault &amp; Exporters</span></div>
+          <div class="shortcut-row"><kbd>⌘K</kbd> <span>Search Sounds &amp; Features</span></div>
+          <div class="shortcut-row"><kbd>Alt</kbd> + <kbd>T</kbd> <span>Toggle Midnight / Paper Theme</span></div>
+          <div class="shortcut-row"><kbd>Space</kbd> <span>Play / Pause Audio Preview</span></div>
+          <div class="shortcut-row"><kbd>?</kbd> <span>Open Studio Guide &amp; Shortcuts</span></div>
+          <div class="shortcut-row"><kbd>Esc</kbd> <span>Close Any Modal / Stop Audio</span></div>
+        </div>
       </div>
     </div>
 
