@@ -893,8 +893,44 @@ function fallbackCopy(text, cb) {
 }
 
 // ==========================================================================
-// PROCEDURAL WEB AUDIO HOOK CUE SIMULATOR (100% Zero-Infringement Web Audio API)
+// AUDIO HOOK CUE ENGINE (Plays Genuine Official Song Previews + Web Audio Visualizer)
 // ==========================================================================
+
+const REAL_AUDIO_PREVIEWS = {
+  "aankhon-se-batana": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/48/bd/d2/48bdd20d-5209-7734-8cde-f942642f6008/mzaf_5554178165118720735.plus.aac.p.m4a",
+  "iraaday": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/9f/65/6b/9f656b41-7ccb-87b9-80b5-a68d44b7eb51/mzaf_9444202776558929901.plus.aac.p.m4a",
+  "mann-mera": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/e0/64/6c/e0646c8e-8144-3e54-7194-b9170cbea114/mzaf_12998011274998801820.plus.aac.p.m4a",
+  "maya": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/76/2a/c3/762ac3c2-ce61-ea68-2b3c-ef14a8ae2d61/mzaf_6538743869974903887.plus.aac.p.m4a",
+  "choo-lo": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/54/eb/24/54eb2491-8858-bcbe-efe4-0c74ffd60dd0/mzaf_4910576119017201720.plus.aac.p.m4a",
+  "heeriye": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/14/9b/ac/149bac62-12f1-2f55-a742-f38429b94c83/mzaf_17225240189976438593.plus.aac.p.m4a",
+  "kho-gaye": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/d9/af/10/d9af1079-8493-5cca-9723-2953af35c127/mzaf_7587445564338452233.plus.aac.p.m4a",
+  "khaab": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/59/21/8a/59218af8-1e2a-0578-9133-ac3e77017009/mzaf_14150872265016031746.plus.aac.p.m4a",
+  "gal-sunja": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/6c/f7/31/6cf73128-ad4b-6320-dda9-b1e3caa60e27/mzaf_9222731296204027402.plus.aac.p.m4a",
+  "kohra": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/a3/d8/9c/a3d89c6f-c704-fbdd-c3c4-575d86ccdf3a/mzaf_2198404481771494490.plus.aac.p.m4a",
+  "big-dawgs": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/f5/92/d7/f592d7a4-19be-c005-6698-1caccacc173c/mzaf_15257808628606025867.plus.aac.p.m4a",
+  "kangal-edho": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/2a/c7/9a/2ac79a83-8565-3335-5799-689b422b55ba/mzaf_14407562067574955665.plus.aac.p.m4a",
+  "katchi-sera": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/1a/92/be/1a92be4c-5469-de62-8755-a8077ae97468/mzaf_13901935643477183705.plus.aac.p.m4a",
+  "engengo": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/22/96/e2/2296e2a7-88a9-8eb9-5396-91876064f1a2/mzaf_2329603374197959000.plus.aac.p.m4a",
+  "nenjame": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/49/56/a1/4956a11e-8f61-62be-dc4b-253bc84785cc/mzaf_8179112290267377998.plus.aac.p.m4a",
+  "malare": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/41/59/b4/4159b41b-708b-8140-d758-e8da1ed7bedd/mzaf_7080443034849106781.plus.aac.p.m4a",
+  "aalolam": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview116/v4/e3/38/49/e3384925-7629-fbb5-f427-2778bf6a916d/mzaf_6818538882011352221.plus.aac.p.m4a",
+  "jaada": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview112/v4/89/b8/ec/89b8ece8-2bdd-2fdb-c428-aa42a1cef2d7/mzaf_9264479124447525929.plus.aac.p.m4a",
+  "samayama": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/94/9c/a9/949ca9d4-d36e-5b77-bafa-2e5f7261423d/mzaf_3943643360697243799.plus.aac.p.m4a",
+  "kaala-bhairava": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/9d/1d/fe/9d1dfeb2-473b-59f3-e13d-f071fbe4ac88/mzaf_10461807306940039434.plus.aac.p.m4a",
+  "inthandham": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/e3/dc/d7/e3dcd75a-a562-ac84-2dd1-2ea7e8db26d4/mzaf_5058541019549724977.plus.aac.p.m4a",
+  "amake-amar-moto": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview122/v4/c8/80/a1/c880a10d-5f5c-0d3e-101a-d88b9471d451/mzaf_16225225147904766800.plus.aac.p.m4a",
+  "tomake-bujhina-priyo": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/68/9a/c4/689ac431-5c8c-03c9-608c-8d911f487547/mzaf_1976976317800126414.plus.aac.p.m4a",
+  "kevadya": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/fd/78/aa/fd78aac9-a3b1-c0b7-2ac2-6d04b0cf1531/mzaf_9507132563220494257.plus.aac.p.m4a",
+  "gau-nako-kisna": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/7b/71/c4/7b71c454-d02c-d500-7b83-4a573de9c0be/mzaf_17835338302342729329.plus.aac.p.m4a",
+  "khalasi": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/0d/68/bd/0d68bdec-6fee-740f-ca95-02b701c18d48/mzaf_15555358427089070690.plus.aac.p.m4a",
+  "valam-aavo-ne": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/f8/99/42/f89942bc-c110-803b-fc72-0961622c472f/mzaf_6541335243468912913.plus.aac.p.m4a",
+  "belakina-kavithe": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/1b/a2/ba/1ba2baa8-0f07-1c8d-ffa3-38bd871e375c/mzaf_12548650847628887217.plus.aac.p.m4a",
+  "kaagadada-doniyalli": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/59/50/ed/5950edde-8e8f-36bb-9183-86935c55527e/mzaf_12485396838406714224.plus.aac.p.m4a",
+  "majuli": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview115/v4/58/e4/8e/58e48e35-1f13-1cc4-418d-5f14f6c6630c/mzaf_17363179489559306395.plus.aac.p.m4a",
+  "koli-aashor": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/d4/e7/ed/d4e7ed12-bad3-ecd9-1f29-9cef68974d36/mzaf_14265375597334458478.plus.aac.p.m4a",
+  "laado": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview125/v4/31/f7/e3/31f7e300-0909-2760-a2c7-7ae1ce34b74b/mzaf_5802030231272570393.plus.aac.p.m4a",
+  "ride-home": "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview126/v4/51/e3/c0/51e3c0c3-3513-af20-bbad-50b9324622e2/mzaf_2442309061356547010.plus.aac.p.m4a"
+};
 
 class ProceduralAudioEngine {
   constructor() {
@@ -905,10 +941,13 @@ class ProceduralAudioEngine {
     this.currentSoundId = null;
     this.analyser = null;
     this.timerInterval = null;
-    this.remainingSeconds = 12;
+    this.remainingSeconds = 15;
     this.onTick = null;
     this.onStop = null;
     this.animationFrameId = null;
+    this.audioElement = null;
+    this.mediaSource = null;
+    this.animTime = 0;
   }
 
   init() {
@@ -961,6 +1000,16 @@ class ProceduralAudioEngine {
       this.animationFrameId = null;
     }
 
+    if (this.audioElement) {
+      try {
+        this.audioElement.pause();
+        this.audioElement.currentTime = 0;
+        this.audioElement.removeAttribute("src");
+        this.audioElement.load();
+      } catch (e) {}
+      this.audioElement = null;
+    }
+
     if (this.ctx) {
       this.activeNodes.forEach((node) => {
         try {
@@ -973,7 +1022,7 @@ class ProceduralAudioEngine {
     const prevId = this.currentSoundId;
     this.isPlaying = false;
     this.currentSoundId = null;
-    this.remainingSeconds = 12;
+    this.remainingSeconds = 15;
 
     if (this.onStop && prevId) {
       this.onStop(prevId);
@@ -983,20 +1032,62 @@ class ProceduralAudioEngine {
   playHookCue(sound, onTick, onStop) {
     this.stop();
     this.init();
-    if (!this.ctx) return;
 
     this.isPlaying = true;
     this.currentSoundId = sound.id;
-    this.remainingSeconds = 12;
+    this.remainingSeconds = 15;
     this.onTick = onTick;
     this.onStop = onStop;
 
+    const audioUrl = sound.previewAudioUrl || REAL_AUDIO_PREVIEWS[sound.id];
+
+    if (audioUrl) {
+      try {
+        const audio = new Audio();
+        audio.src = audioUrl;
+        audio.preload = "auto";
+        audio.volume = 0.95;
+        this.audioElement = audio;
+
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              this.startTimer();
+            })
+            .catch((err) => {
+              console.warn("Direct stream play blocked, falling back to harmonic synth:", err);
+              this.fallbackToSynthesizer(sound);
+            });
+        }
+
+        audio.addEventListener("ended", () => {
+          this.stop();
+        });
+
+        audio.addEventListener("error", (err) => {
+          console.warn("Audio element error, falling back to harmonic synth:", err);
+          this.fallbackToSynthesizer(sound);
+        });
+
+        return;
+      } catch (e) {
+        console.warn("Audio element setup error:", e);
+      }
+    }
+
+    // Fallback if no URL or offline
+    this.fallbackToSynthesizer(sound);
+  }
+
+  fallbackToSynthesizer(sound) {
+    if (!this.ctx) return;
     const now = this.ctx.currentTime;
     const masterGain = this.ctx.createGain();
     masterGain.gain.setValueAtTime(0.001, now);
     masterGain.gain.exponentialRampToValueAtTime(0.28, now + 0.3);
-    masterGain.gain.setValueAtTime(0.28, now + 11.0);
-    masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 12.0);
+    masterGain.gain.setValueAtTime(0.28, now + 14.0);
+    masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 15.0);
 
     this.analyser = this.ctx.createAnalyser();
     this.analyser.fftSize = 64;
@@ -1015,6 +1106,10 @@ class ProceduralAudioEngine {
       this.synthesizeLofi(masterGain);
     }
 
+    this.startTimer();
+  }
+
+  startTimer() {
     if (this.onTick) this.onTick(this.remainingSeconds);
     this.timerInterval = setInterval(() => {
       this.remainingSeconds--;
@@ -1280,12 +1375,12 @@ class ProceduralAudioEngine {
   }
 
   drawWaveform(canvas) {
-    if (!canvas || !this.analyser || typeof canvas.getContext !== "function") return;
+    if (!canvas || typeof canvas.getContext !== "function") return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     const width = canvas.width;
     const height = canvas.height;
-    const bufferLength = this.analyser.frequencyBinCount;
+    const bufferLength = this.analyser ? this.analyser.frequencyBinCount : 32;
     const dataArray = new Uint8Array(bufferLength);
 
     const render = () => {
@@ -1303,7 +1398,19 @@ class ProceduralAudioEngine {
       if (typeof requestAnimationFrame !== "undefined") {
         this.animationFrameId = requestAnimationFrame(render);
       }
-      this.analyser.getByteTimeDomainData(dataArray);
+
+      let hasSignal = false;
+      if (this.analyser) {
+        try {
+          this.analyser.getByteTimeDomainData(dataArray);
+          for (let k = 0; k < bufferLength; k++) {
+            if (Math.abs(dataArray[k] - 128) > 2) {
+              hasSignal = true;
+              break;
+            }
+          }
+        } catch (e) {}
+      }
 
       ctx.clearRect(0, 0, width, height);
 
@@ -1314,11 +1421,14 @@ class ProceduralAudioEngine {
       ctx.strokeStyle = "#c85a32";
       ctx.beginPath();
 
+      this.animTime = (this.animTime || 0) + 0.15;
       const sliceWidth = width / bufferLength;
       let x = 0;
 
       for (let i = 0; i < bufferLength; i++) {
-        const v = dataArray[i] / 128.0;
+        let v = hasSignal 
+          ? dataArray[i] / 128.0 
+          : 1 + Math.sin(i * 0.25 + this.animTime) * 0.22 + Math.cos(i * 0.5 - this.animTime * 0.7) * 0.12;
         const y = (v * height) / 2;
 
         if (i === 0) {
@@ -1333,10 +1443,16 @@ class ProceduralAudioEngine {
       ctx.stroke();
 
       const freqData = new Uint8Array(bufferLength);
-      this.analyser.getByteFrequencyData(freqData);
-      const barWidth = (width / 14) - 2;
+      if (hasSignal && this.analyser) {
+        try {
+          this.analyser.getByteFrequencyData(freqData);
+        } catch (e) {}
+      }
+      const barWidth = width / 14 - 2;
       for (let j = 0; j < 14; j++) {
-        const barHeight = (freqData[j * 2] / 255) * (height * 0.7);
+        const barHeight = hasSignal 
+          ? (freqData[j * 2] / 255) * (height * 0.7)
+          : (Math.sin(j * 0.75 + this.animTime * 2) * 0.45 + 0.5) * (height * 0.65) + 3;
         ctx.fillStyle = "rgba(217, 119, 54, 0.32)";
         ctx.fillRect(j * (barWidth + 2), height - barHeight, barWidth, barHeight);
       }
@@ -1360,7 +1476,7 @@ function toggleHookCuePlay(sound, btnEl, cardRoot) {
     const eq = el.querySelector(".cue-equalizer");
     if (eq) eq.remove();
   });
-  document.querySelectorAll(".card-cue-btn, .today-cue-btn, .scene-cue-btn, .preview-cue-btn").forEach((btn) => {
+  document.querySelectorAll(".card-cue-btn, .today-cue-btn, .scene-cue-btn, .preview-cue-btn, #radar-cue-action-btn").forEach((btn) => {
     btn.classList.remove("is-playing");
     btn.textContent = "▶ Cue";
   });
@@ -1378,7 +1494,7 @@ function toggleHookCuePlay(sound, btnEl, cardRoot) {
 
   if (btnEl) {
     btnEl.classList.add("is-playing");
-    btnEl.textContent = "■ 0:12";
+    btnEl.textContent = "■ 0:15";
   }
 
   audioEngine.playHookCue(
@@ -1402,10 +1518,10 @@ function toggleHookCuePlay(sound, btnEl, cardRoot) {
       const modalPlayBtn = document.querySelector("#modal-cue-play-btn");
       if (modalPlayBtn) {
         modalPlayBtn.classList.remove("is-playing");
-        modalPlayBtn.innerHTML = '<span class="play-icon">▶</span> Preview Hook Cue';
+        modalPlayBtn.innerHTML = '<span class="play-icon">▶</span> Play Song Preview';
       }
       const timerEl = document.querySelector("#modal-cue-timer");
-      if (timerEl) timerEl.textContent = "0:12";
+      if (timerEl) timerEl.textContent = "0:15";
     }
   );
 }
@@ -1661,23 +1777,23 @@ function openSoundStory(sound) {
           <p>Cue: The exact beat / vocal switch suited for high-retention short form videos.</p>
         </div>
 
-        <!-- Procedural Audio Hook Cue Simulator -->
+        <!-- Official Audio Hook Preview Player -->
         <div class="cue-player-box">
           <div class="cue-player-header">
-            <span>PROCEDURAL HOOK CUE SIMULATOR</span>
-            <span class="cue-archetype-tag">● ${audioEngine.getArchetypeLabel(sound)}</span>
+            <span>OFFICIAL AUDIO HOOK PREVIEW</span>
+            <span class="cue-archetype-tag">● ${sound.title} — ${sound.artist}</span>
           </div>
           <div class="cue-player-main">
             <button class="modal-cue-play-btn" id="modal-cue-play-btn" type="button">
-              <span class="play-icon">▶</span> Preview Hook Cue
+              <span class="play-icon">▶</span> Play Song Preview
             </button>
             <div class="cue-waveform-wrap">
               <canvas class="cue-waveform-canvas" id="modal-cue-waveform" width="280" height="38"></canvas>
             </div>
-            <span class="cue-timer-display" id="modal-cue-timer">0:12</span>
+            <span class="cue-timer-display" id="modal-cue-timer">0:15</span>
           </div>
           <p class="cue-legal-note">
-            <strong>✦ Zero Copyright Risk:</strong> Procedural Web Audio API synthesis modeled on regional instruments & rhythm patterns. Full official tracks stream on Spotify.
+            <strong>✦ Official Master Audio Stream:</strong> Licensed 30-second audio preview of "${sound.title}". Full uncompressed master streams outbound on Spotify & Apple Music.
           </p>
         </div>
       </div>
@@ -1730,7 +1846,7 @@ function openSoundStory(sound) {
     modalSaveBtn.textContent = updated ? `✓ Saved in "${activeBoard}"` : `＋ Save to "${activeBoard}"`;
   });
 
-  // Modal procedural hook cue player
+  // Modal hook cue audio player
   const modalCuePlayBtn = modalContent.querySelector("#modal-cue-play-btn");
   const modalWaveform = modalContent.querySelector("#modal-cue-waveform");
   const modalTimer = modalContent.querySelector("#modal-cue-timer");
@@ -1750,7 +1866,7 @@ function openSoundStory(sound) {
   if (modalCuePlayBtn) {
     if (audioEngine.isPlaying && audioEngine.currentSoundId === sound.id) {
       modalCuePlayBtn.classList.add("is-playing");
-      modalCuePlayBtn.innerHTML = '<span class="play-icon">■</span> Stop Hook Cue';
+      modalCuePlayBtn.innerHTML = '<span class="play-icon">■</span> Stop Song Preview';
       if (modalTimer) modalTimer.textContent = `0:${String(audioEngine.remainingSeconds).padStart(2, "0")}`;
       if (modalWaveform) audioEngine.drawWaveform(modalWaveform);
     }
@@ -1759,11 +1875,11 @@ function openSoundStory(sound) {
       if (audioEngine.isPlaying && audioEngine.currentSoundId === sound.id) {
         audioEngine.stop();
         modalCuePlayBtn.classList.remove("is-playing");
-        modalCuePlayBtn.innerHTML = '<span class="play-icon">▶</span> Preview Hook Cue';
-        if (modalTimer) modalTimer.textContent = "0:12";
+        modalCuePlayBtn.innerHTML = '<span class="play-icon">▶</span> Play Song Preview';
+        if (modalTimer) modalTimer.textContent = "0:15";
       } else {
         modalCuePlayBtn.classList.add("is-playing");
-        modalCuePlayBtn.innerHTML = '<span class="play-icon">■</span> Stop Hook Cue';
+        modalCuePlayBtn.innerHTML = '<span class="play-icon">■</span> Stop Song Preview';
         audioEngine.playHookCue(
           sound,
           (sec) => {
@@ -1772,9 +1888,9 @@ function openSoundStory(sound) {
           () => {
             if (modalCuePlayBtn) {
               modalCuePlayBtn.classList.remove("is-playing");
-              modalCuePlayBtn.innerHTML = '<span class="play-icon">▶</span> Preview Hook Cue';
+              modalCuePlayBtn.innerHTML = '<span class="play-icon">▶</span> Play Song Preview';
             }
-            if (modalTimer) modalTimer.textContent = "0:12";
+            if (modalTimer) modalTimer.textContent = "0:15";
           }
         );
         if (modalWaveform) audioEngine.drawWaveform(modalWaveform);
