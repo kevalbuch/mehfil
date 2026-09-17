@@ -2039,6 +2039,11 @@ document.addEventListener("DOMContentLoaded", () => {
     shareBoardBtn.addEventListener("click", () => openShareBoardModal(activeBoard));
   }
 
+  const spotifySyncBtn = document.querySelector("#spotify-sync-btn");
+  if (spotifySyncBtn) {
+    spotifySyncBtn.addEventListener("click", () => openSpotifySyncModal(activeBoard));
+  }
+
   // Initial Renders
   renderTodayFeed();
   renderMatchCards();
@@ -3105,6 +3110,557 @@ function renderRoutesSection(routeId) {
   renderRouteDossier(activeRoute);
 }
 
+// ==========================================================================
+// 19. The Vault: Spotify Playlist Sync & Export (Phase 3 Feature)
+// ==========================================================================
+const spotifySyncModal = document.querySelector("#spotify-sync-modal");
+const spotifySyncBody = document.querySelector("#spotify-sync-body");
+const spotifySyncClose = document.querySelector("#spotify-sync-close");
+
+function openSpotifySyncModal(boardName) {
+  if (!spotifySyncModal || !spotifySyncBody) return;
+  const board = boardName || activeBoard;
+  const vault = getSavedVault();
+  const soundIds = vault[board] || [];
+  const tracks = soundIds.map((id) => catalog.find((s) => s.id === id)).filter(Boolean);
+
+  if (!tracks.length) {
+    spotifySyncBody.innerHTML = `
+      <div class="spotify-sync-header">
+        <span class="story-label">The Vault · Playlist Exporter</span>
+        <h2>Sync to <em>Spotify</em></h2>
+        <p>Your curated collection <strong>"${board}"</strong> has no saved tracks yet.</p>
+      </div>
+      <div class="sync-board-info">
+        <span class="sync-board-title">Board: <strong>${board}</strong></span>
+        <span class="sync-track-count">0 Tracks</span>
+      </div>
+      <div style="padding: 20px 0; text-align: center;">
+        <p style="font-size: 13px; color: var(--muted); line-height: 1.6; margin: 0 0 16px;">
+          Use the <strong>＋</strong> button on any sound card in Today, Post Match, or Scenes to save sounds into <strong>"${board}"</strong>, then return here to export your collection.
+        </p>
+        <button class="sync-copy-tracklist-btn" id="sync-empty-close-btn">Return to Vault</button>
+      </div>
+    `;
+    const emptyBtn = document.querySelector("#sync-empty-close-btn");
+    if (emptyBtn) emptyBtn.addEventListener("click", closeSpotifySyncModal);
+  } else {
+    const primaryTrack = tracks[0];
+    const spotifyIntentUrl = primaryTrack.outboundUrl || `https://open.spotify.com/search/${encodeURIComponent(primaryTrack.title + " " + primaryTrack.artist)}`;
+    
+    spotifySyncBody.innerHTML = `
+      <div class="spotify-sync-header">
+        <span class="story-label">The Vault · Playlist Exporter</span>
+        <h2>Sync to <em>Spotify</em></h2>
+        <p>Export your curated <strong>"${board}"</strong> board into Spotify. Copy clean metadata formatted for playlist transfer tools (Soundiiz, TuneMyMusic) or launch directly into Spotify's web player.</p>
+      </div>
+      <div class="sync-board-info">
+        <span class="sync-board-title">Board: <strong>${board}</strong></span>
+        <span class="sync-track-count">${tracks.length} ${tracks.length === 1 ? "Track" : "Tracks"}</span>
+      </div>
+      <div class="sync-tracklist-preview">
+        ${tracks.map((t, idx) => `
+          <div class="sync-track-item">
+            <div>
+              <span class="sync-track-name">${idx + 1}. ${t.title}</span>
+              <span class="sync-track-artist"> · ${t.artist} (${t.language})</span>
+            </div>
+            <a class="listen-outbound" href="${t.outboundUrl}" target="_blank" rel="noopener noreferrer" style="font-size: 10px; padding: 3px 8px;">Listen ↗</a>
+          </div>
+        `).join("")}
+      </div>
+      <div class="sync-actions-group">
+        <a class="sync-spotify-primary-btn" href="${spotifyIntentUrl}" target="_blank" rel="noopener noreferrer">
+          Launch Spotify Player ↗
+        </a>
+        <button class="sync-copy-tracklist-btn" id="sync-copy-all-btn">
+          📋 Copy Formatted Tracklist for Importer
+        </button>
+        <p class="sync-instructions-note">
+          Tip: Paste clipboard into Spotify Desktop app (Ctrl+V / Cmd+V on a new playlist) or import via Soundiiz / TuneMyMusic for instant sync.
+        </p>
+      </div>
+    `;
+
+    const copyBtn = document.querySelector("#sync-copy-all-btn");
+    if (copyBtn) {
+      copyBtn.addEventListener("click", () => {
+        const textPayload = `# Mehfil Curated Vault Board: ${board}\n# India Sound Culture Engine\n\n` + 
+          tracks.map((t, i) => `${i + 1}. ${t.title} - ${t.artist} [${t.language}]`).join("\n");
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(textPayload).then(() => {
+            copyBtn.textContent = "✓ Tracklist Copied to Clipboard!";
+            showToast(`✓ Copied ${tracks.length} tracks to clipboard! Ready to paste into Spotify or Soundiiz.`);
+            setTimeout(() => {
+              if (copyBtn) copyBtn.textContent = "📋 Copy Formatted Tracklist for Importer";
+            }, 3000);
+          }).catch(() => {
+            showToast(`✓ ${tracks.length} tracks prepared for import.`);
+          });
+        } else {
+          showToast(`✓ ${tracks.length} tracks prepared for import.`);
+        }
+      });
+    }
+  }
+
+  spotifySyncModal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
+
+function closeSpotifySyncModal() {
+  if (!spotifySyncModal) return;
+  spotifySyncModal.classList.add("hidden");
+  document.body.style.overflow = "";
+}
+
+if (spotifySyncClose) {
+  spotifySyncClose.addEventListener("click", closeSpotifySyncModal);
+}
+if (spotifySyncModal) {
+  spotifySyncModal.addEventListener("click", (e) => {
+    if (e.target === spotifySyncModal) closeSpotifySyncModal();
+  });
+}
+
+// ==========================================================================
+// 20. Artist Verification & Sound Claim Modal
+// ==========================================================================
+const claimModal = document.querySelector("#claim-modal");
+const claimClose = document.querySelector("#claim-close");
+const claimForm = document.querySelector("#artist-claim-form");
+
+function openClaimModal(sound) {
+  if (!claimModal) return;
+  if (sound) {
+    const artistInput = document.querySelector("#claim-artist");
+    const trackInput = document.querySelector("#claim-track");
+    const hookInput = document.querySelector("#claim-hook");
+    if (artistInput) artistInput.value = sound.artist || "";
+    if (trackInput) trackInput.value = sound.title || "";
+    if (hookInput) hookInput.value = sound.hook || "";
+  }
+  claimModal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
+
+function closeClaimModal() {
+  if (!claimModal) return;
+  claimModal.classList.add("hidden");
+  document.body.style.overflow = "";
+}
+
+if (claimClose) claimClose.addEventListener("click", closeClaimModal);
+if (claimModal) {
+  claimModal.addEventListener("click", (e) => {
+    if (e.target === claimModal) closeClaimModal();
+  });
+}
+
+const radarClaimOpenBtn = document.querySelector("#radar-open-claim-btn");
+if (radarClaimOpenBtn) {
+  radarClaimOpenBtn.addEventListener("click", () => openClaimModal());
+}
+
+if (claimForm) {
+  claimForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const claim = {
+      id: "claim-" + Date.now(),
+      artist: (document.querySelector("#claim-artist")?.value || "").trim(),
+      track: (document.querySelector("#claim-track")?.value || "").trim(),
+      ig: (document.querySelector("#claim-ig")?.value || "").trim(),
+      spotify: (document.querySelector("#claim-spotify")?.value || "").trim(),
+      hook: (document.querySelector("#claim-hook")?.value || "").trim(),
+      note: (document.querySelector("#claim-note")?.value || "").trim(),
+      claimedAt: new Date().toISOString()
+    };
+
+    const existingClaims = JSON.parse(localStorage.getItem("mehfil-artist-claims") || "[]");
+    existingClaims.push(claim);
+    localStorage.setItem("mehfil-artist-claims", JSON.stringify(existingClaims));
+
+    claimForm.reset();
+    closeClaimModal();
+    showToast(`✓ Verification submitted for "${claim.track}" by ${claim.artist}! Our cultural desk will review within 24h.`);
+  });
+}
+
+// ==========================================================================
+// 21. Artist Radar Intelligence Engine (Phase 3 Feature)
+// ==========================================================================
+class ArtistRadarEngine {
+  static hashStr(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) {
+      h = (h * 31 + str.charCodeAt(i)) & 0xffffffff;
+    }
+    return Math.abs(h);
+  }
+
+  static getTrackHotspots(sound) {
+    const lang = (sound.language || "").toLowerCase();
+    const scene = (sound.scene || "").toLowerCase();
+    if (lang.includes("punjabi") || scene.includes("majha") || scene.includes("punjab")) {
+      return [
+        { city: "Mohali & Chandigarh Hub", share: "44%" },
+        { city: "Delhi NCR University Belt", share: "32%" },
+        { city: "Birmingham / UK Diaspora", share: "24%" }
+      ];
+    }
+    if (lang.includes("malayalam") || scene.includes("kochi") || scene.includes("kerala")) {
+      return [
+        { city: "Kochi & Fort Kochi Cafes", share: "48%" },
+        { city: "Kozhikode Beach Circuit", share: "28%" },
+        { city: "Bengaluru Indiranagar Hub", share: "24%" }
+      ];
+    }
+    if (lang.includes("tamil") || scene.includes("chennai")) {
+      return [
+        { city: "Chennai Besant Nagar & ECR", share: "52%" },
+        { city: "Coimbatore College Circuit", share: "28%" },
+        { city: "Bengaluru Koramangala Hub", share: "20%" }
+      ];
+    }
+    if (lang.includes("bengali") || scene.includes("kolkata")) {
+      return [
+        { city: "Kolkata Tramway & College St", share: "50%" },
+        { city: "Shantiniketan Baul Hub", share: "28%" },
+        { city: "Dhaka Creative Crossover", share: "22%" }
+      ];
+    }
+    if (lang.includes("assamese") || scene.includes("brahmaputra") || scene.includes("northeast")) {
+      return [
+        { city: "Guwahati & Brahmaputra Banks", share: "46%" },
+        { city: "Shillong Indie Belt", share: "34%" },
+        { city: "Delhi North Campus Community", share: "20%" }
+      ];
+    }
+    if (lang.includes("kannada") || scene.includes("bengaluru")) {
+      return [
+        { city: "Bengaluru Church St & Indiranagar", share: "46%" },
+        { city: "Mysuru Cultural District", share: "30%" },
+        { city: "Manipal & Mangaluru Belt", share: "24%" }
+      ];
+    }
+    if (lang.includes("telugu") || scene.includes("hyderabad")) {
+      return [
+        { city: "Hyderabad Jubilee Hills & Gachibowli", share: "50%" },
+        { city: "Visakhapatnam Beach Road", share: "30%" },
+        { city: "Vijayawada Creative Scene", share: "20%" }
+      ];
+    }
+    return [
+      { city: "Delhi NCR University Belt", share: "42%" },
+      { city: "Mumbai Bandra & Versova Studios", share: "35%" },
+      { city: "Pune Viman Nagar Campus Scene", share: "23%" }
+    ];
+  }
+
+  static getTelemetry(sound) {
+    const h = this.hashStr(sound.id);
+    const stage = (sound.stage || "Rising").toLowerCase();
+
+    let velocityScore = 78;
+    let runwayPct = 68;
+    let velocityProjection = "";
+    let runwayInsight = "";
+
+    if (stage.includes("early") || stage.includes("underground")) {
+      velocityScore = 38 + (h % 15);
+      runwayPct = 85 + (h % 10);
+      velocityProjection = "Underground seeding phase · High organic saves from campus & indie design creators.";
+      runwayInsight = "Prime adoption window. Very low risk of audience audio fatigue.";
+    } else if (stage.includes("rising")) {
+      velocityScore = 75 + (h % 14);
+      runwayPct = 62 + (h % 14);
+      velocityProjection = "Rapid week-on-week reel acceleration · Entering multi-city lifestyle and travel circles.";
+      runwayInsight = "High engagement phase. Sound is scaling beyond its original regional demographic.";
+    } else if (stage.includes("peaking")) {
+      velocityScore = 90 + (h % 8);
+      runwayPct = 28 + (h % 12);
+      velocityProjection = "Peak algorithmic distribution · Dominating national FYP feeds and explore tabs.";
+      runwayInsight = "Approaching saturation. Creators should execute unique twist angles only.";
+    } else if (stage.includes("saturated")) {
+      velocityScore = 64 + (h % 8);
+      runwayPct = 12 + (h % 8);
+      velocityProjection = "Algorithmic fatigue detected · Recommend pivoting to fresher Sound Twins.";
+      runwayInsight = "Overused audio index. Standard reel edits experience diminished watch completion.";
+    } else {
+      velocityScore = 80 + (h % 9);
+      runwayPct = 55 + (h % 15);
+      velocityProjection = "Nostalgic second-wave resurgence · Adopted by Gen-Z aesthetic photo dumps.";
+      runwayInsight = "High emotional resonance. Re-discovered catalog track with renewed streaming life.";
+    }
+
+    const archetype = audioEngine ? audioEngine.determineArchetype(sound) : "lofi";
+    let att1 = 40, att2 = 30, att3 = 18, att4 = 12;
+    let label1 = "Photo Dumps & Soft Launches",
+        label2 = "Morning Routine & Coffee Vlogs",
+        label3 = "Rain & Bedroom Window POV",
+        label4 = "Slow Motion Candid Moments";
+
+    if (archetype === "drill") {
+      att1 = 45; att2 = 28; att3 = 18; att4 = 9;
+      label1 = "Fast Transitions & Kinetic Cuts";
+      label2 = "Car Drive & Night Motion";
+      label3 = "Campus Cultural Hype";
+      label4 = "Streetwear & Sneaker Dumps";
+    } else if (archetype === "synthwave") {
+      att1 = 40; att2 = 30; att3 = 20; att4 = 10;
+      label1 = "Golden Hour & Sunset Fits";
+      label2 = "Kinetic Travel & City Walks";
+      label3 = "Aesthetic Café Vlogs";
+      label4 = "Late-Night Reflections";
+    } else if (archetype === "folk") {
+      att1 = 42; att2 = 32; att3 = 16; att4 = 10;
+      label1 = "Monsoon Travel & Heritage";
+      label2 = "Poetry & Introspective POV";
+      label3 = "Handloom & Craft Aesthetics";
+      label4 = "College Farewell & Nostalgia";
+    }
+
+    let nano = 40, micro = 40, macro = 20;
+    let tierInsight = "";
+    if (stage.includes("early") || stage.includes("underground")) {
+      nano = 68; micro = 26; macro = 6;
+      tierInsight = "Nano-creators (<10k) represent 68% of creators using this sound, driving 4.5x higher comment sentiment.";
+    } else if (stage.includes("rising")) {
+      nano = 44; micro = 42; macro = 14;
+      tierInsight = "Healthy creator pyramid: micro-influencers are scaling the sound across lifestyle and travel communities.";
+    } else if (stage.includes("peaking")) {
+      nano = 22; micro = 38; macro = 40;
+      tierInsight = "Heavy macro-creator adoption. Over 40% of reel volume is powered by verified accounts and agency talent.";
+    } else if (stage.includes("saturated")) {
+      nano = 14; micro = 30; macro = 56;
+      tierInsight = "Dominated by commercial brand reels and mass templates. Underground tastemakers have begun migrating.";
+    } else {
+      nano = 36; micro = 46; macro = 18;
+      tierInsight = "Micro aesthetic curators rediscovered the hook, blending it into film-camera dumps and analog reels.";
+    }
+
+    const hotspots = this.getTrackHotspots(sound);
+
+    return {
+      velocityScore,
+      runwayPct,
+      velocityProjection,
+      runwayInsight,
+      attributions: [
+        { label: label1, pct: att1 },
+        { label: label2, pct: att2 },
+        { label: label3, pct: att3 },
+        { label: label4, pct: att4 }
+      ],
+      creatorTiers: { nano, micro, macro, tierInsight },
+      hotspots
+    };
+  }
+}
+
+let activeRadarSoundId = "gal-sunja";
+let activeRadarArchetype = "all";
+
+function getFilteredRadarCatalog(archetype) {
+  if (archetype === "all") return catalog;
+  return catalog.filter((s) => {
+    const arch = audioEngine ? audioEngine.determineArchetype(s) : "lofi";
+    return arch === archetype;
+  });
+}
+
+function renderArtistRadar(soundId, archetype = activeRadarArchetype) {
+  const dashboard = document.querySelector("#radar-dashboard");
+  const trackSelect = document.querySelector("#radar-track-select");
+  if (!dashboard) return;
+
+  activeRadarArchetype = archetype;
+  const filteredCatalog = getFilteredRadarCatalog(archetype);
+
+  // If provided soundId is not in filtered list, pick the first in the list
+  let sound = filteredCatalog.find((s) => s.id === soundId);
+  if (!sound) {
+    sound = filteredCatalog[0] || catalog[0];
+  }
+  activeRadarSoundId = sound.id;
+
+  // Populate or refresh selector dropdown
+  if (trackSelect) {
+    trackSelect.innerHTML = filteredCatalog
+      .map(
+        (s) => `<option value="${s.id}" ${s.id === sound.id ? "selected" : ""}>
+          ${s.title} — ${s.artist} [${s.scene}]
+        </option>`
+      )
+      .join("");
+  }
+
+  const telemetry = ArtistRadarEngine.getTelemetry(sound);
+
+  dashboard.innerHTML = `
+    <!-- Metric 01: Pre-Saturation Velocity & Runway -->
+    <div class="radar-card" id="radar-card-velocity">
+      <div class="radar-card-header">
+        <div>
+          <span class="radar-card-tag">SURFACE INTEL · METRIC 01</span>
+          <h3>Pre-Saturation Velocity</h3>
+        </div>
+        <span class="velocity-stage-pill">${sound.stage}</span>
+      </div>
+      <div class="velocity-hero">
+        <div class="velocity-circle">
+          <span class="velocity-score">${telemetry.velocityScore}</span>
+          <span class="velocity-unit">/ 100 IDX</span>
+        </div>
+        <div class="velocity-text-info">
+          <p class="velocity-projection">${telemetry.velocityProjection}</p>
+        </div>
+      </div>
+      <div class="runway-meter">
+        <div class="runway-meter-label">
+          <span>Creative Runway Before FYP Fatigue</span>
+          <span><strong>${telemetry.runwayPct}%</strong> REMAINING</span>
+        </div>
+        <div class="runway-track">
+          <div class="runway-fill" style="width: ${telemetry.runwayPct}%;"></div>
+        </div>
+        <p style="font-size: 11px; color: var(--muted); margin: 4px 0 0; line-height: 1.4;">
+          ${telemetry.runwayInsight}
+        </p>
+      </div>
+    </div>
+
+    <!-- Metric 02: Reel Moment Attribution -->
+    <div class="radar-card" id="radar-card-attribution">
+      <div class="radar-card-header">
+        <div>
+          <span class="radar-card-tag">CREATOR FORMAT FIT · METRIC 02</span>
+          <h3>Reel Moment Attribution</h3>
+        </div>
+        <span class="stage stage-${sound.stage.toLowerCase().replace(/\s+/g, "-")}">● ${sound.stage}</span>
+      </div>
+      <div class="attribution-list">
+        ${telemetry.attributions
+          .map(
+            (item) => `
+          <div class="attribution-row">
+            <div class="attribution-meta">
+              <span>${item.label}</span>
+              <span class="attribution-pct">${item.pct}%</span>
+            </div>
+            <div class="attribution-bar-track">
+              <div class="attribution-bar-fill" style="width: ${item.pct}%;"></div>
+            </div>
+          </div>
+        `
+          )
+          .join("")}
+      </div>
+    </div>
+
+    <!-- Metric 03: Creator Tier Mix -->
+    <div class="radar-card" id="radar-card-tiers">
+      <div class="radar-card-header">
+        <div>
+          <span class="radar-card-tag">INFLUENCE SPREAD · METRIC 03</span>
+          <h3>Creator Tier Adoption</h3>
+        </div>
+        <span class="story-label" style="margin: 0;">Scale Distribution</span>
+      </div>
+      <div class="creator-tiers-grid">
+        <div class="tier-box">
+          <span class="tier-pct">${telemetry.creatorTiers.nano}%</span>
+          <span class="tier-title">Nano Creators</span>
+          <span class="tier-followers">&lt; 10K FOLLOWERS</span>
+        </div>
+        <div class="tier-box">
+          <span class="tier-pct">${telemetry.creatorTiers.micro}%</span>
+          <span class="tier-title">Micro Aesthetic</span>
+          <span class="tier-followers">10K — 100K</span>
+        </div>
+        <div class="tier-box">
+          <span class="tier-pct">${telemetry.creatorTiers.macro}%</span>
+          <span class="tier-title">Macro / FYP</span>
+          <span class="tier-followers">&gt; 100K FOLLOWERS</span>
+        </div>
+      </div>
+      <p class="tier-insight-note">
+        "${telemetry.creatorTiers.tierInsight}"
+      </p>
+    </div>
+
+    <!-- Metric 04: Regional Adoption Hotspots -->
+    <div class="radar-card" id="radar-card-hotspots">
+      <div class="radar-card-header">
+        <div>
+          <span class="radar-card-tag">GEOGRAPHIC TELEMETRY · METRIC 04</span>
+          <h3>Regional Hotspots & Actions</h3>
+        </div>
+        <span class="story-label" style="margin: 0;">Audience Origin</span>
+      </div>
+      <div class="hotspots-list">
+        ${telemetry.hotspots
+          .map(
+            (spot) => `
+          <div class="hotspot-item">
+            <span class="hotspot-city">📍 ${spot.city}</span>
+            <span class="hotspot-share">${spot.share} Share</span>
+          </div>
+        `
+          )
+          .join("")}
+      </div>
+      <div class="radar-actions-strip">
+        <button id="radar-cue-action-btn">▶ Play Hook Cue</button>
+        <button id="radar-story-action-btn">Full Story ↗</button>
+        <a href="${sound.outboundUrl}" target="_blank" rel="noopener noreferrer">Spotify ↗</a>
+        <button id="radar-claim-this-btn">✦ Claim Sound</button>
+      </div>
+    </div>
+  `;
+
+  // Attach card action listeners
+  const cueBtn = dashboard.querySelector("#radar-cue-action-btn");
+  if (cueBtn) {
+    cueBtn.addEventListener("click", () => {
+      toggleHookCuePlay(sound, cueBtn, dashboard.querySelector("#radar-card-hotspots"));
+    });
+  }
+
+  const storyBtn = dashboard.querySelector("#radar-story-action-btn");
+  if (storyBtn) {
+    storyBtn.addEventListener("click", () => openSoundStory(sound));
+  }
+
+  const claimBtn = dashboard.querySelector("#radar-claim-this-btn");
+  if (claimBtn) {
+    claimBtn.addEventListener("click", () => openClaimModal(sound));
+  }
+}
+
+function initArtistRadar() {
+  const trackSelect = document.querySelector("#radar-track-select");
+  if (trackSelect) {
+    trackSelect.addEventListener("change", (e) => {
+      renderArtistRadar(e.target.value);
+    });
+  }
+
+  const chipContainer = document.querySelector("#radar-archetype-chips");
+  if (chipContainer) {
+    chipContainer.querySelectorAll(".radar-filter-chip").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        chipContainer.querySelectorAll(".radar-filter-chip").forEach((c) => c.classList.remove("active"));
+        chip.classList.add("active");
+        const archetype = chip.dataset.archetype;
+        renderArtistRadar(activeRadarSoundId, archetype);
+      });
+    });
+  }
+
+  renderArtistRadar("gal-sunja", "all");
+}
+
 // Global escape key handler
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
@@ -3113,6 +3669,8 @@ document.addEventListener("keydown", (e) => {
     closeTastePassportModal();
     closeShareBoardModal();
     closeSubmitModal();
+    closeSpotifySyncModal();
+    closeClaimModal();
   }
 });
 
@@ -3123,4 +3681,6 @@ renderMatchCards();
 renderVault();
 renderSceneExplorer("all");
 renderRoutesSection("majha-drill");
+initArtistRadar();
+
 

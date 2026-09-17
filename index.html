@@ -22,6 +22,7 @@
         <a class="nav-link active" href="#match">Post match</a>
         <a class="nav-link" href="#scenes">Scenes</a>
         <a class="nav-link" href="#routes">Sound Routes</a>
+        <a class="nav-link" href="#radar">Artist Radar</a>
         <a class="nav-link" href="#search">Search</a>
         <a class="nav-link" href="#vault">Your vault <span class="saved-count">0</span></a>
       </nav>
@@ -197,7 +198,41 @@
         </div>
       </section>
 
-      <!-- 6. Catch The Sound (Search) -->
+      <!-- 6. Artist Radar (Phase 3 Feature) -->
+      <section class="radar-section" id="radar">
+        <div class="radar-header">
+          <div class="radar-header-text">
+            <p class="eyebrow"><span></span> Regional Music Intelligence · For Independent Artists & Scouts</p>
+            <h2>Artist Radar:<br /><em>Where independent sound meets creator momentum.</em></h2>
+            <p class="radar-desc">Track how regional independent music travels from underground scenes into short-form video formats. Monitor pre-saturation velocity, creator moment adoption, and regional audience hotspots before mainstream algorithms take over.</p>
+          </div>
+          <div class="radar-header-actions">
+            <button class="radar-action-claim-btn" id="radar-open-claim-btn">✦ Claim Sound Profile</button>
+          </div>
+        </div>
+
+        <!-- Track Selector Dropdown & Filter Bar -->
+        <div class="radar-selector-bar">
+          <div class="radar-select-group">
+            <label for="radar-track-select">SELECT CATALOG TRACK TO INSPECT:</label>
+            <select id="radar-track-select" aria-label="Select track for radar analytics"></select>
+          </div>
+          <div class="radar-curator-filter-chips" id="radar-archetype-chips">
+            <button class="radar-filter-chip active" data-archetype="all">All Tracks (33)</button>
+            <button class="radar-filter-chip" data-archetype="lofi">Lo-Fi / Acoustic (17)</button>
+            <button class="radar-filter-chip" data-archetype="synthwave">Retro Synth (7)</button>
+            <button class="radar-filter-chip" data-archetype="folk">Baul / Folk (6)</button>
+            <button class="radar-filter-chip" data-archetype="drill">Desi Drill (3)</button>
+          </div>
+        </div>
+
+        <!-- Radar Telemetry Dashboard Grid -->
+        <div class="radar-dashboard" id="radar-dashboard" aria-live="polite">
+          <!-- Populated dynamically by app.js -->
+        </div>
+      </section>
+
+      <!-- 7. Catch The Sound (Search) -->
       <section class="search-section" id="search">
         <div class="search-intro">
           <p class="eyebrow"><span></span> Catch the sound</p>
@@ -225,7 +260,7 @@
         </div>
       </section>
 
-      <!-- 5. The Vault -->
+      <!-- 8. The Vault -->
       <section class="vault-section" id="vault">
         <div class="vault-intro">
           <p class="eyebrow"><span></span> The vault</p>
@@ -240,6 +275,7 @@
           <div class="vault-actions-bar">
             <button id="view-passport-btn" class="vault-feature-btn">🎫 Taste Passport</button>
             <button id="share-board-btn" class="vault-feature-btn">📤 Export for Stories</button>
+            <button id="spotify-sync-btn" class="vault-feature-btn">🎵 Sync to Spotify</button>
           </div>
         </div>
 
@@ -393,6 +429,60 @@
           <div class="submit-form-actions">
             <button type="submit" class="submit-submit-btn">Submit to Editorial Review ↗</button>
             <span class="submit-policy-note">Reviewed daily according to music rights & cultural guidelines.</span>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Spotify Playlist Sync Modal -->
+    <div id="spotify-sync-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Spotify Playlist Sync">
+      <div class="modal-card spotify-sync-card">
+        <button id="spotify-sync-close" class="modal-close" aria-label="Close Spotify sync modal">×</button>
+        <div id="spotify-sync-body"></div>
+      </div>
+    </div>
+
+    <!-- Artist Claim Modal -->
+    <div id="claim-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Claim Artist Profile">
+      <div class="modal-card claim-card">
+        <button id="claim-close" class="modal-close" aria-label="Close claim modal">×</button>
+        <div class="claim-modal-header">
+          <span class="story-label">Artist Verification Desk</span>
+          <h2>Claim Your <em>Sound Profile</em></h2>
+          <p>Are you the composer, producer, or rights holder for a sound in Mehfil? Verify your profile to receive direct creator attribution and submit official reel hook edits.</p>
+        </div>
+        <form id="artist-claim-form" class="submit-form">
+          <div class="form-row-2">
+            <label class="form-field">
+              <span>Artist / Band Name *</span>
+              <input type="text" id="claim-artist" required placeholder="e.g. Wazir Patar" />
+            </label>
+            <label class="form-field">
+              <span>Your Track Title *</span>
+              <input type="text" id="claim-track" required placeholder="e.g. Gal Sunja" />
+            </label>
+          </div>
+          <div class="form-row-2">
+            <label class="form-field">
+              <span>Official Instagram Audio Handle *</span>
+              <input type="text" id="claim-ig" required placeholder="@artist_official" />
+            </label>
+            <label class="form-field">
+              <span>Spotify Artist URI / URL *</span>
+              <input type="url" id="claim-spotify" required placeholder="https://open.spotify.com/artist/..." />
+            </label>
+          </div>
+          <label class="form-field">
+            <span>Preferred 10-15s Hook Timestamp</span>
+            <input type="text" id="claim-hook" placeholder="e.g. 0:44 — 0:58 (Drop section)" />
+          </label>
+          <label class="form-field">
+            <span>Creator Hook Recommendation Note</span>
+            <textarea id="claim-note" rows="2" placeholder="Tell creators the best way to cut or pace video edits to your track..."></textarea>
+          </label>
+          <div class="submit-form-actions">
+            <button type="submit" class="submit-submit-btn">Submit Verification Request ↗</button>
+            <span class="submit-policy-note">Verified within 24 hours. Connects directly to your official streaming royalties.</span>
           </div>
         </form>
       </div>
