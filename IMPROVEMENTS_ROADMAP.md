@@ -23,8 +23,8 @@ This living roadmap documents all planned UI, UX, functional, mobile, and ecosys
 - [x] **C3. Batch Creator Blueprint Exporter**: 1-click batch copy of the entire board's reel hook timestamps, caption angles, and hashtag bundles for desktop video editors (Premiere, Final Cut, CapCut).
 
 ### Phase D: Editorial Intelligence & Video Pacing (Strategic)
-- [ ] **D1. Video Editing BPM & Pacing Sorter**: Filter sounds by video edit pacing (*Slow-Mo <90 BPM*, *Walking / Lifestyle 95-115 BPM*, *Fast-Cut / Bass Drop >125 BPM*) with live BPM tags on cards.
-- [ ] **D2. Scene Radar Intelligence Report Exporter**: Export emerging regional scene velocity, artist analytics, and trajectory telemetry as clean CSV / JSON / Markdown summary.
+- [x] **D1. Video Editing BPM & Pacing Sorter**: Filter sounds by video edit pacing (*Slow-Mo <90 BPM*, *Walking / Lifestyle 95-115 BPM*, *Fast-Cut / Bass Drop >125 BPM*) with live BPM tags on cards.
+- [x] **D2. Scene Radar Intelligence Report Exporter**: Export emerging regional scene velocity, artist analytics, and trajectory telemetry as clean CSV / JSON / Markdown summary.
 
 ---
 
@@ -35,4 +35,4 @@ This living roadmap documents all planned UI, UX, functional, mobile, and ecosys
 | **Phase A** | Audio & Creator Flow Polish | 4 Tasks | ✅ Completed |
 | **Phase B** | Aesthetic Polish & A/B Audio | 3 Tasks | ✅ Completed |
 | **Phase C** | Vault Management & Studio Exporters | 3 Tasks | ✅ Completed |
-| **Phase D** | Editorial Intelligence & Video Pacing | 2 Tasks | ⏳ Up Next |
+| **Phase D** | Editorial Intelligence & Video Pacing | 2 Tasks | ✅ Completed |

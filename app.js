@@ -592,6 +592,69 @@ const catalog = [
   }
 ];
 
+// ==========================================================================
+// PHASE D: VIDEO EDITING BPM METADATA & PACING ENGINE
+// ==========================================================================
+const TRACK_BPM_REGISTRY = {
+  "aankhon-se-batana": 86,
+  "iraaday": 98,
+  "mann-mera": 82,
+  "maya": 114,
+  "choo-lo": 112,
+  "heeriye": 120,
+  "kho-gaye": 88,
+  "khaab": 90,
+  "gal-sunja": 142,
+  "kohra": 138,
+  "big-dawgs": 148,
+  "kangal-edho": 105,
+  "katchi-sera": 128,
+  "engengo": 84,
+  "nenjame": 78,
+  "malare": 85,
+  "aalolam": 84,
+  "jaada": 132,
+  "samayama": 96,
+  "kaala-bhairava": 126,
+  "inthandham": 102,
+  "amake-amar-moto": 108,
+  "tomake-bujhina-priyo": 80,
+  "kevadya": 82,
+  "gau-nako-kisna": 130,
+  "khalasi": 136,
+  "valam-aavo-ne": 84,
+  "belakina-kavithe": 104,
+  "kaagadada-doniyalli": 88,
+  "majuli": 90,
+  "koli-aashor": 106,
+  "laado": 134,
+  "ride-home": 110
+};
+
+// Calibrate all catalog tracks with verified BPM metadata
+catalog.forEach((t) => {
+  t.bpm = TRACK_BPM_REGISTRY[t.id] || 100;
+});
+
+function getPacingCategory(bpm) {
+  if (bpm < 92) return { key: "slow", label: "Slow-Mo", icon: "🌊", range: "<90 BPM" };
+  if (bpm <= 122) return { key: "medium", label: "Lifestyle", icon: "🚶", range: "95-115 BPM" };
+  return { key: "fast", label: "Fast-Cut", icon: "⚡", range: ">125 BPM" };
+}
+
+function estimateTrackBpm(track) {
+  if (track.bpm) return track.bpm;
+  if (TRACK_BPM_REGISTRY[track.id]) return TRACK_BPM_REGISTRY[track.id];
+  const energy = track.energy || "soft";
+  const moment = track.moment || "";
+  if (energy === "chaotic" || moment === "gym" || moment === "meme") return 142;
+  if (energy === "bold") return 130;
+  if (energy === "nostalgic" || moment === "travel" || moment === "outfit") return 106;
+  return 85;
+}
+
+let activePacingFilter = "all"; // "all" | "slow" | "medium" | "fast"
+
 // 2. State & Vault Storage
 let activeMoment = "outfit";
 let activeBoard = "my 2026 sound";
@@ -2471,6 +2534,16 @@ function renderSoundCardElements(sounds) {
       }
     }
 
+    // Card BPM Badge (Video Pacing)
+    const bpmBadge = card.querySelector(".card-bpm-badge");
+    if (bpmBadge) {
+      const bpm = sound.bpm || estimateTrackBpm(sound);
+      const pacing = getPacingCategory(bpm);
+      bpmBadge.textContent = `${bpm} BPM · ${pacing.label}`;
+      bpmBadge.className = `card-bpm-badge bpm-${pacing.key}`;
+      bpmBadge.title = `Video Edit Pacing: ${pacing.label} (${pacing.range})`;
+    }
+
     card.querySelector("h3").textContent = sound.title;
     card.querySelector(".artist").textContent = sound.artist;
     card.querySelector(".hook strong").textContent = sound.hook || "0:25 — 0:40";
@@ -2579,10 +2652,13 @@ async function renderMatchCards(customSounds = null) {
   const moodLabel = moodSelect ? moodSelect.selectedOptions[0].textContent : currentEnergy;
 
   if (matchNoteEl) {
+    const pacingDesc = activePacingFilter !== "all"
+      ? ` · <strong>${getPacingCategory(activePacingFilter === "slow" ? 80 : activePacingFilter === "medium" ? 105 : 135).label} pacing</strong>`
+      : "";
     if (ideaText) {
-      matchNoteEl.innerHTML = `for your idea "<strong>${escapeHtml(ideaText)}</strong>" &amp; <strong>${momentLabel}</strong>`;
+      matchNoteEl.innerHTML = `for your idea "<strong>${escapeHtml(ideaText)}</strong>" &amp; <strong>${momentLabel}</strong>${pacingDesc}`;
     } else {
-      matchNoteEl.innerHTML = `for an <strong>${momentLabel}</strong> with a <strong>${moodLabel}</strong> mood`;
+      matchNoteEl.innerHTML = `for an <strong>${momentLabel}</strong> with a <strong>${moodLabel}</strong> mood${pacingDesc}`;
     }
   }
 
@@ -2591,26 +2667,44 @@ async function renderMatchCards(customSounds = null) {
   if (loadingIndicator) loadingIndicator.classList.remove("hidden");
 
   try {
-    const sounds = await dynamicSoundEngine.fetchViralTracks(activeMoment, currentEnergy, ideaText);
+    const rawSounds = await dynamicSoundEngine.fetchViralTracks(activeMoment, currentEnergy, ideaText);
     
     if (seq !== currentMatchRequestSeq) return;
 
-    if (sounds && sounds.length >= 3) {
-      renderSoundCardElements(sounds);
+    let sounds = rawSounds || [];
+    if (activePacingFilter !== "all") {
+      sounds = sounds.filter((s) => {
+        const bpm = s.bpm || estimateTrackBpm(s);
+        return getPacingCategory(bpm).key === activePacingFilter;
+      });
+    }
+
+    if (sounds.length >= 3) {
+      renderSoundCardElements(sounds.slice(0, 3));
     } else {
       // Complement or fallback with strictly verified catalog tracks
-      const strictCatalog = catalog.filter((s) => isSoundStrictlyCompatible(s, activeMoment));
-      const existingIds = new Set((sounds || []).map((s) => s.id));
-      const needed = 3 - (sounds ? sounds.length : 0);
-      const fills = strictCatalog.filter((s) => !existingIds.has(s.id)).slice(0, needed);
-      const combined = [...(sounds || []), ...fills];
-      renderSoundCardElements(combined.length ? combined : strictCatalog.slice(0, 3));
+      const strictCatalog = catalog.filter((s) => {
+        const compat = isSoundStrictlyCompatible(s, activeMoment);
+        if (activePacingFilter === "all") return compat;
+        return compat && getPacingCategory(s.bpm).key === activePacingFilter;
+      });
+      const existingIds = new Set(sounds.map((s) => s.id));
+      const fills = strictCatalog.filter((s) => !existingIds.has(s.id));
+      const combined = [...sounds, ...fills];
+      renderSoundCardElements(combined.slice(0, 3));
     }
   } catch (err) {
     console.warn("Live dynamic fetch error:", err);
     if (seq === currentMatchRequestSeq) {
-      const fallbackSounds = catalog.filter((s) => isSoundStrictlyCompatible(s, activeMoment)).slice(0, 3);
-      renderSoundCardElements(fallbackSounds);
+      let fallbackSounds = catalog.filter((s) => {
+        const compat = isSoundStrictlyCompatible(s, activeMoment);
+        if (activePacingFilter === "all") return compat;
+        return compat && getPacingCategory(s.bpm).key === activePacingFilter;
+      });
+      if (!fallbackSounds.length) {
+        fallbackSounds = catalog.filter((s) => isSoundStrictlyCompatible(s, activeMoment));
+      }
+      renderSoundCardElements(fallbackSounds.slice(0, 3));
     }
   } finally {
     if (seq === currentMatchRequestSeq && loadingIndicator) {
@@ -3477,6 +3571,17 @@ document.addEventListener("DOMContentLoaded", () => {
       renderMatchCards();
     });
   }
+
+  // 6. Video edit pacing filter pills (Phase D)
+  const pacingPills = document.querySelectorAll("#pacing-pills .pacing-pill");
+  pacingPills.forEach((pill) => {
+    pill.addEventListener("click", () => {
+      pacingPills.forEach((p) => p.classList.remove("active"));
+      pill.classList.add("active");
+      activePacingFilter = pill.dataset.pacing || "all";
+      renderMatchCards();
+    });
+  });
 
   // Search input and tags
   if (searchInput) {
@@ -5481,6 +5586,226 @@ function initArtistRadar() {
   }
 
   renderArtistRadar("gal-sunja", "all");
+
+  // Wire Radar Intelligence Exporter (Phase D)
+  if (radarExportBtn) {
+    radarExportBtn.addEventListener("click", openRadarExportModal);
+  }
+  if (radarExportClose) {
+    radarExportClose.addEventListener("click", closeRadarExportModal);
+  }
+  if (radarExportModal) {
+    radarExportModal.addEventListener("click", (e) => {
+      if (e.target === radarExportModal) closeRadarExportModal();
+    });
+  }
+
+  const csvBtn = document.querySelector("#export-csv-btn");
+  if (csvBtn) csvBtn.addEventListener("click", exportRadarCSV);
+
+  const mdBtn = document.querySelector("#export-markdown-btn");
+  if (mdBtn) mdBtn.addEventListener("click", exportRadarMarkdown);
+
+  const jsonBtn = document.querySelector("#export-json-btn");
+  if (jsonBtn) jsonBtn.addEventListener("click", exportRadarJSON);
+}
+
+// ==========================================================================
+// 22. SCENE RADAR INTELLIGENCE EXPORTER (PHASE D)
+// ==========================================================================
+const radarExportModal = document.querySelector("#radar-export-modal");
+const radarExportClose = document.querySelector("#radar-export-close");
+const radarExportBtn = document.querySelector("#radar-export-report-btn");
+
+function openRadarExportModal() {
+  if (!radarExportModal) return;
+  const tracks = getFilteredRadarCatalog(activeRadarArchetype);
+  const countEl = document.querySelector("#radar-export-count");
+  const hubsEl = document.querySelector("#radar-export-hubs");
+  if (countEl) countEl.textContent = tracks.length;
+  if (hubsEl) {
+    const uniqueHubs = new Set(tracks.map((s) => s.scene));
+    hubsEl.textContent = uniqueHubs.size;
+  }
+  radarExportModal.classList.remove("hidden");
+  document.body.style.overflow = "hidden";
+}
+
+function closeRadarExportModal() {
+  if (!radarExportModal) return;
+  radarExportModal.classList.add("hidden");
+  document.body.style.overflow = "";
+}
+
+function exportRadarCSV() {
+  const tracks = getFilteredRadarCatalog(activeRadarArchetype);
+  const headers = [
+    "Track ID",
+    "Title",
+    "Artist",
+    "Language",
+    "Scene Hub",
+    "BPM",
+    "Pacing Category",
+    "Cultural Stage",
+    "Energy",
+    "Pre-Saturation Velocity (0-100)",
+    "Creative Runway (%)",
+    "Top Regional Hotspots",
+    "Reel Hook Window",
+    "Primary Reel Fit",
+    "Director Angle",
+    "Spotify Link"
+  ];
+
+  const rows = tracks.map((s) => {
+    const tel = ArtistRadarEngine.getTelemetry(s);
+    const bpm = s.bpm || estimateTrackBpm(s);
+    const pacing = getPacingCategory(bpm).label;
+    const hotspotsStr = (tel.hotspots || [])
+      .map((h) => `${h.city} (${h.intensity}%)`)
+      .join("; ");
+
+    return [
+      s.id,
+      s.title,
+      s.artist,
+      s.language,
+      s.scene,
+      bpm,
+      pacing,
+      s.stage,
+      s.energy,
+      tel.velocityScore,
+      tel.runwayPct,
+      hotspotsStr,
+      s.hook,
+      s.best,
+      s.idea,
+      s.outboundUrl
+    ].map((val) => `"${String(val || "").replace(/"/g, '""')}"`);
+  });
+
+  const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\r\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.download = `mehfil-scene-radar-intelligence-${activeRadarArchetype}.csv`;
+  a.href = url;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  showToast(`📊 CSV Scene Intelligence report downloaded (${tracks.length} tracks)!`);
+}
+
+function exportRadarMarkdown() {
+  const tracks = getFilteredRadarCatalog(activeRadarArchetype);
+  const dateStr = new Date().toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  });
+
+  const lines = [
+    `# 📡 Mehfil Regional Music Intelligence Report`,
+    `**Archetype Filter**: ${activeRadarArchetype.toUpperCase()} | **Tracks Analyzed**: ${tracks.length} | **Generated**: ${dateStr}`,
+    `*Source: Mehfil Sound Culture & Emerging Audio Graph (https://mehfil.app)*`,
+    ``,
+    `---`,
+    ``,
+    `### 📊 Executive Telemetry Matrix`,
+    ``,
+    `| # | Track Title | Artist | Scene Hub | BPM & Pacing | Stage | Velocity | Runway | Top Adoption Hotspot |`,
+    `|---|---|---|---|---|---|---|---|---|`
+  ];
+
+  tracks.forEach((s, i) => {
+    const tel = ArtistRadarEngine.getTelemetry(s);
+    const bpm = s.bpm || estimateTrackBpm(s);
+    const pacing = getPacingCategory(bpm).label;
+    const topCity = tel.hotspots && tel.hotspots[0] ? `${tel.hotspots[0].city} (${tel.hotspots[0].intensity}%)` : "National";
+    lines.push(
+      `| ${String(i + 1).padStart(2, "0")} | **${s.title}** | ${s.artist} | ${s.scene} | ${bpm} BPM (${pacing}) | ● ${s.stage} | ${tel.velocityScore}/100 | ${tel.runwayPct}% | ${topCity} |`
+    );
+  });
+
+  lines.push(``);
+  lines.push(`---`);
+  lines.push(``);
+  lines.push(`### 🎯 Detailed Cultural Dossiers & Creator Trajectories`);
+  lines.push(``);
+
+  tracks.forEach((s) => {
+    const tel = ArtistRadarEngine.getTelemetry(s);
+    const bpm = s.bpm || estimateTrackBpm(s);
+    const pacing = getPacingCategory(bpm);
+    lines.push(`#### "${s.title}" — ${s.artist} [${s.language}]`);
+    lines.push(`- **Scene Hub**: ${s.scene} (Cultural Stage: ${s.stage})`);
+    lines.push(`- **Tempo & Pacing**: ${bpm} BPM · ${pacing.label} (${pacing.range})`);
+    lines.push(`- **Optimal Reel Hook**: ${s.hook} (*${s.best}*)`);
+    lines.push(`- **Creative Runway Insight**: ${tel.runwayInsight}`);
+    lines.push(`- **Creator Distribution**: Nano (${tel.creatorTiers.nano}%) · Micro (${tel.creatorTiers.micro}%) · Macro (${tel.creatorTiers.macro}%)`);
+    lines.push(`- **Director's Execution Idea**: ${s.idea}`);
+    lines.push(``);
+  });
+
+  lines.push(`"Find the sound before it becomes everyone's sound."`);
+  lines.push(`Exported directly from Mehfil Artist Radar Suite · https://mehfil.app`);
+
+  const mdText = lines.join("\n");
+  navigator.clipboard.writeText(mdText).then(() => {
+    showToast(`📋 Markdown Brief copied to clipboard (${tracks.length} tracks)!`);
+  }).catch(() => {
+    showToast("Clipboard copy not supported. Use CSV download instead.", true);
+  });
+}
+
+function exportRadarJSON() {
+  const tracks = getFilteredRadarCatalog(activeRadarArchetype);
+  const data = {
+    report: "Mehfil Regional Music Intelligence Telemetry",
+    generatedAt: new Date().toISOString(),
+    archetypeFilter: activeRadarArchetype,
+    totalTracks: tracks.length,
+    tracks: tracks.map((s) => {
+      const tel = ArtistRadarEngine.getTelemetry(s);
+      const bpm = s.bpm || estimateTrackBpm(s);
+      const pacing = getPacingCategory(bpm);
+      return {
+        id: s.id,
+        title: s.title,
+        artist: s.artist,
+        language: s.language,
+        scene: s.scene,
+        bpm,
+        pacingCategory: pacing.label,
+        stage: s.stage,
+        energy: s.energy,
+        velocityScore: tel.velocityScore,
+        runwayPct: tel.runwayPct,
+        runwayInsight: tel.runwayInsight,
+        creatorTiers: tel.creatorTiers,
+        hotspots: tel.hotspots,
+        hook: s.hook,
+        bestFor: s.best,
+        executionAngle: s.idea,
+        outboundUrl: s.outboundUrl
+      };
+    })
+  };
+
+  const jsonStr = JSON.stringify(data, null, 2);
+  navigator.clipboard.writeText(jsonStr).then(() => {
+    showToast(`⚡ JSON Telemetry copied to clipboard (${tracks.length} tracks)!`);
+  }).catch(() => {
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.download = `mehfil-radar-telemetry-${activeRadarArchetype}.json`;
+    a.href = url;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    showToast("⚡ JSON Telemetry file downloaded!");
+  });
 }
 
 // Global escape key handler
@@ -5493,6 +5818,7 @@ document.addEventListener("keydown", (e) => {
     closeSubmitModal();
     closeSpotifySyncModal();
     closeClaimModal();
+    closeRadarExportModal();
   }
 });
 

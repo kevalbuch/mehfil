@@ -94,6 +94,16 @@
             <button class="chip" data-moment="meme">Meme / chaotic</button>
             <button class="chip" data-moment="late-night">Late night thoughts</button>
           </div>
+
+          <!-- Step 03: Video Edit Pacing -->
+          <div class="step step-three"><span>03</span><label>Video edit pacing</label></div>
+          <div class="pacing-pills" id="pacing-pills" role="group" aria-label="Video edit pacing filter">
+            <button type="button" class="pacing-pill active" data-pacing="all">All Tempos</button>
+            <button type="button" class="pacing-pill" data-pacing="slow" title="Cinematic slow pans, aerials, monsoon strolls (&lt; 90 BPM)">🌊 Slow-Mo (&lt; 90 BPM)</button>
+            <button type="button" class="pacing-pill" data-pacing="medium" title="Walking vlogs, fit reveals, coffee runs (95–115 BPM)">🚶 Lifestyle (95–115 BPM)</button>
+            <button type="button" class="pacing-pill" data-pacing="fast" title="Gym PRs, trap drops, rapid jump-cuts (&gt; 125 BPM)">⚡ Fast-Cut / PR (&gt; 125 BPM)</button>
+          </div>
+
           <div class="prompt-bottom">
             <div class="mood-select">
               <span class="spark">✦</span>
@@ -256,6 +266,7 @@
             <p class="radar-desc">Track how regional independent music travels from underground scenes into short-form video formats. Monitor pre-saturation velocity, creator moment adoption, and regional audience hotspots before mainstream algorithms take over.</p>
           </div>
           <div class="radar-header-actions">
+            <button class="radar-action-claim-btn secondary" id="radar-export-report-btn">📤 Export Scene Intel</button>
             <button class="radar-action-claim-btn" id="radar-open-claim-btn">✦ Claim Sound Profile</button>
           </div>
         </div>
@@ -386,6 +397,7 @@
             <span class="stage"></span>
             <span class="language"></span>
             <span class="match-relevance-badge"></span>
+            <span class="card-bpm-badge"></span>
           </div>
           <h3></h3>
           <p class="artist"></p>
@@ -435,6 +447,55 @@
       <div class="modal-card story-export-card studio-exporter-card">
         <button id="share-close" class="modal-close" aria-label="Close share modal">×</button>
         <div id="share-body"></div>
+      </div>
+    </div>
+
+    <!-- Scene Radar Intelligence Report Exporter Modal -->
+    <div id="radar-export-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Export Scene Radar Intelligence">
+      <div class="modal-card radar-export-modal-card">
+        <button id="radar-export-close" class="modal-close" aria-label="Close export modal">×</button>
+        <div class="radar-export-header">
+          <span class="story-label">Regional Music Intelligence · Export Engine</span>
+          <h2>Export <em>Scene Telemetry &amp; Velocity</em></h2>
+          <p>Export pre-saturation velocity scores, regional corridor migration, and creator moment telemetry for pitch decks, client memos, or Notion research.</p>
+        </div>
+        <div class="radar-export-body">
+          <div class="radar-export-preview-stats">
+            <div class="radar-export-stat-box">
+              <span class="stat-num" id="radar-export-count">33</span>
+              <span class="stat-label">Tracks in Scope</span>
+            </div>
+            <div class="radar-export-stat-box">
+              <span class="stat-num" id="radar-export-hubs">16</span>
+              <span class="stat-label">Regional Hubs</span>
+            </div>
+            <div class="radar-export-stat-box">
+              <span class="stat-num">100 IDX</span>
+              <span class="stat-label">Velocity Range</span>
+            </div>
+          </div>
+
+          <div class="radar-export-options-grid">
+            <div class="radar-export-option-card">
+              <div class="option-icon">📊</div>
+              <h3>CSV Spreadsheet</h3>
+              <p>Download clean tabular dataset (.csv) with BPM, velocity index, runway %, and top adoption cities.</p>
+              <button type="button" class="passport-action-btn primary" id="export-csv-btn">📥 Download CSV File</button>
+            </div>
+            <div class="radar-export-option-card">
+              <div class="option-icon">📑</div>
+              <h3>Markdown Briefing</h3>
+              <p>Formatted executive brief in GitHub Flavored Markdown ready to paste into Notion, Google Docs, or Slack.</p>
+              <button type="button" class="passport-action-btn" id="export-markdown-btn">📋 Copy Markdown Brief</button>
+            </div>
+            <div class="radar-export-option-card">
+              <div class="option-icon">⚡</div>
+              <h3>JSON Telemetry</h3>
+              <p>Machine-readable JSON schema of the regional audio graph for internal tools, APIs, and data pipelines.</p>
+              <button type="button" class="passport-action-btn" id="export-json-btn">📋 Copy JSON Data</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
