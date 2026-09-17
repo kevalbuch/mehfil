@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f0ebe0" />
+    <title>Mehfil — Find the sound before it becomes everyone's sound</title>
+    <meta name="description" content="A creator-first sound culture engine for India's next creators. Discover, understand, and post with sounds across regional scenes." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,400&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="grain" aria-hidden="true"></div>
+
+    <!-- Top Navigation -->
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="Mehfil home">mehfil<span>®</span></a>
+      <nav aria-label="Main navigation">
+        <a class="nav-link" href="#today">Today</a>
+        <a class="nav-link active" href="#match">Post match</a>
+        <a class="nav-link" href="#scenes">Scenes</a>
+        <a class="nav-link" href="#search">Search</a>
+        <a class="nav-link" href="#vault">Your vault <span class="saved-count">0</span></a>
+      </nav>
+      <div class="topbar-right">
+        <button class="top-submit-btn" id="open-submit-btn" aria-label="Submit Sound">＋ Submit</button>
+        <a class="top-search-btn" href="#search" aria-label="Quick search">⌕ <span>⌘K</span></a>
+      </div>
+    </header>
+
+    <main id="top">
+      <!-- 1. Post Match Hero -->
+      <section class="hero" id="match">
+        <p class="corner-edition">Vol. 01<br />Sep ’26</p>
+        <div class="hero-record" aria-hidden="true">
+          <div class="record-label">MEHFIL<br /><small>find it first</small></div>
+          <div class="record-hole"></div>
+        </div>
+        <p class="hero-sticker">YOUR<br />NEXT<br />OBSESSION <span>↗</span></p>
+        <p class="eyebrow"><span></span> Sound culture, from here</p>
+        <div class="hero-heading">
+          <h1>What are you<br /><em>posting</em> today?</h1>
+          <p>Tell us the moment. We’ll find the sound before it becomes everyone’s sound.</p>
+        </div>
+
+        <div class="prompt-box">
+          <div class="step"><span>01</span><label>Pick your moment</label></div>
+          <div class="chips" role="group" aria-label="Posting moment">
+            <button class="chip selected" data-moment="outfit">Outfit reveal</button>
+            <button class="chip" data-moment="travel">Travel dump</button>
+            <button class="chip" data-moment="soft-launch">Soft launch</button>
+            <button class="chip" data-moment="wedding">Wedding</button>
+            <button class="chip" data-moment="farewell">College farewell</button>
+            <button class="chip" data-moment="birthday">Birthday</button>
+            <button class="chip" data-moment="gym">Gym / PR edit</button>
+            <button class="chip" data-moment="breakup">Breakup & healing</button>
+            <button class="chip" data-moment="meme">Meme / chaotic</button>
+            <button class="chip" data-moment="late-night">Late night thoughts</button>
+          </div>
+          <div class="prompt-bottom">
+            <div class="mood-select">
+              <span class="spark">✦</span>
+              <label for="mood">The energy?</label>
+              <select id="mood">
+                <option value="soft">Soft & cinematic</option>
+                <option value="bold">Bold & unbothered</option>
+                <option value="nostalgic">Nostalgic</option>
+                <option value="chaotic">Chaotic good</option>
+              </select>
+            </div>
+            <button class="find-button" id="find-sounds">Find my sounds <span>↗</span></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Post Match Results -->
+      <section class="results" id="match-results" aria-live="polite">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow"><span></span> Your three, right now</p>
+            <p class="match-note">for an <strong>outfit reveal</strong> with a <strong>soft & cinematic</strong> mood</p>
+          </div>
+          <a class="jump-today-link" href="#today">See today's editorial drop ↓</a>
+        </div>
+        <div class="sound-grid" id="sound-grid"></div>
+        <p class="fine-print">Curated, not scraped. Trend labels blend editorial discernment and observable cultural signals.</p>
+      </section>
+
+      <!-- 3. Today Editorial Drop (Product Brief Section 5) -->
+      <section class="today-section" id="today">
+        <div class="today-header">
+          <div class="today-title-group">
+            <p class="eyebrow"><span></span> Editorial Daily Drop</p>
+            <h2>Today across<br /><em>India's scenes.</em></h2>
+            <p class="today-desc">Five sounds picked by our editors: what to use now, what's rising, what's coming back, an underground find, and a fresh alternative for an overplayed hit.</p>
+          </div>
+          <div class="edition-bar">
+            <span class="edition-label">Weekly Edition Archive:</span>
+            <div class="edition-pills" id="edition-pills" role="tablist">
+              <button class="edition-pill active" data-edition="vol-01">Vol. 01 — Sep ’26 (Current)</button>
+              <button class="edition-pill" data-edition="vol-02">Vol. 02 — Campus Edits</button>
+              <button class="edition-pill" data-edition="vol-03">Vol. 03 — Monsoon Acoustics</button>
+            </div>
+          </div>
+        </div>
+        <div class="today-grid" id="today-editorial-grid"></div>
+      </section>
+
+      <!-- 4. Scene & City Explorer (Phase 2 Feature) -->
+      <section class="scenes-section" id="scenes">
+        <div class="scenes-header">
+          <p class="eyebrow"><span></span> Regional Creative Hubs</p>
+          <h2>Explore by<br /><em>Scene & City.</em></h2>
+          <p class="scenes-desc">India’s music culture doesn't live in a single Top 50 chart. It moves through college canteens, rainy hill drives, and late-night basement studios across regional subcultures.</p>
+          
+          <div class="scene-filter-chips" id="scene-filter-chips">
+            <button class="scene-chip active" data-hub="all">All Hubs (33)</button>
+            <button class="scene-chip" data-hub="kochi">Kochi & Malabar</button>
+            <button class="scene-chip" data-hub="chandigarh">Chandigarh & Majha</button>
+            <button class="scene-chip" data-hub="chennai">Chennai & Madurai</button>
+            <button class="scene-chip" data-hub="delhi">Delhi NCR Indie</button>
+            <button class="scene-chip" data-hub="kolkata">Kolkata Coffeehouse</button>
+            <button class="scene-chip" data-hub="hyderabad">Hyderabad & Deccan</button>
+            <button class="scene-chip" data-hub="bengaluru">Bengaluru Bedroom</button>
+            <button class="scene-chip" data-hub="ahmedabad">Ahmedabad & Kutch</button>
+            <button class="scene-chip" data-hub="pune">Pune & Maharashtra</button>
+            <button class="scene-chip" data-hub="guwahati">Guwahati Mist</button>
+          </div>
+        </div>
+
+        <div class="scenes-display" id="scenes-display">
+          <div class="scene-manifesto" id="scene-manifesto"></div>
+          <div class="scene-tracks-grid" id="scene-tracks-grid"></div>
+        </div>
+      </section>
+
+      <!-- 4. Catch The Sound (Search) -->
+      <section class="search-section" id="search">
+        <div class="search-intro">
+          <p class="eyebrow"><span></span> Catch the sound</p>
+          <h2>Heard it somewhere?<br /><em>Start with a feeling.</em></h2>
+          <p>Search an imperfect lyric, a language, an artist, or a vibe like "rainy Tamil love song" or "Punjabi bike edit". Mehfil uncovers the cultural thread.</p>
+        </div>
+        <div class="search-tool">
+          <label class="search-field" for="sound-search">
+            <span>⌕</span>
+            <input id="sound-search" type="search" autocomplete="off" placeholder="e.g. rainy Tamil love song, college nostalgia" />
+            <kbd>⌘ K</kbd>
+          </label>
+          <div class="search-suggestions">
+            <button data-search="Punjabi bike edit">Punjabi bike edit</button>
+            <button data-search="rainy Tamil love song">rainy Tamil love song</button>
+            <button data-search="college nostalgia">college nostalgia</button>
+            <button data-search="gym PR">gym PR</button>
+            <button data-search="Malayalam lo-fi">Malayalam lo-fi</button>
+            <button data-search="Bengali acoustic">Bengali acoustic</button>
+            <button data-search="Gujarati folk">Gujarati folk</button>
+          </div>
+          <div class="search-results" id="search-results">
+            <p class="search-empty">Try a mood, artist, language, or use case above.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. The Vault -->
+      <section class="vault-section" id="vault">
+        <div class="vault-intro">
+          <p class="eyebrow"><span></span> The vault</p>
+          <h2>Keep the sounds<br />that <em>feel like you.</em></h2>
+          <p class="vault-sub">Organize your discoveries into emotional boards. More personal than a generic liked-songs playlist.</p>
+          
+          <div class="board-creator">
+            <input type="text" id="new-board-input" placeholder="Create a new board (e.g. monsoon drives)..." maxlength="30" />
+            <button id="create-board-btn">＋ Add Board</button>
+          </div>
+
+          <div class="vault-actions-bar">
+            <button id="view-passport-btn" class="vault-feature-btn">🎫 Taste Passport</button>
+            <button id="share-board-btn" class="vault-feature-btn">📤 Export for Stories</button>
+          </div>
+        </div>
+
+        <div class="vault-panel">
+          <div class="vault-top">
+            <p>Saved Board</p>
+            <span id="vault-total">0 saved</span>
+          </div>
+
+          <div class="board-tabs" id="board-tabs" role="tablist" aria-label="Vault boards"></div>
+
+          <h3 id="active-board-title">my 2026 sound</h3>
+          <div id="vault-list" class="vault-list">
+            <p class="vault-empty">Save a sound and it will wait here.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Marquee Ribbon -->
+      <section class="marquee" aria-label="Mehfil scenes">
+        <div>
+          Hindi indie <b>✦</b> Punjabi drill <b>✦</b> Tamil dream-pop <b>✦</b> Malayalam lo-fi <b>✦</b> Bengali acoustic <b>✦</b> Telugu groove <b>✦</b> Marathi roots <b>✦</b> Gujarati folk-pop <b>✦</b> Kannada indie <b>✦</b> Assamese ambient <b>✦</b> India in surround sound <b>✦</b>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+      <p class="brand">mehfil <span>®</span></p>
+      <p>Your sound is already a story.</p>
+      <a href="#top">Back to the top ↑</a>
+    </footer>
+
+    <!-- Sound Card Template for Post Match -->
+    <template id="sound-card-template">
+      <article class="sound-card">
+        <div class="art">
+          <span class="art-number"></span>
+          <button class="save" aria-label="Save sound">＋</button>
+          <div class="orb"></div>
+          <p class="art-text"></p>
+        </div>
+        <div class="card-content">
+          <div class="meta">
+            <span class="stage"></span>
+            <span class="language"></span>
+          </div>
+          <h3></h3>
+          <p class="artist"></p>
+          <div class="hook">
+            <span>Best hook</span>
+            <strong></strong>
+          </div>
+          <p class="best-for"></p>
+          <div class="fresh">
+            <span>Fresh angle</span>
+            <p></p>
+          </div>
+          <div class="card-footer">
+            <span class="sound-twins-info"></span>
+            <div class="card-actions-bar">
+              <button class="copy-blueprint-btn" type="button" aria-label="Copy Reel Blueprint">📋 Blueprint</button>
+              <div class="card-links">
+                <span class="view-hint">Story ↗</span>
+                <a class="open-link" href="#" aria-label="Open sound on Spotify">Spotify ↗</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <!-- Sound Story Modal -->
+    <div id="sound-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-card">
+        <button id="modal-close" class="modal-close" aria-label="Close story modal">×</button>
+        <div id="modal-body"></div>
+      </div>
+    </div>
+
+    <!-- Taste Passport Modal -->
+    <div id="passport-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Taste Passport">
+      <div class="modal-card passport-card">
+        <button id="passport-close" class="modal-close" aria-label="Close passport modal">×</button>
+        <div id="passport-body"></div>
+      </div>
+    </div>
+
+    <!-- Shareable Board Card Modal (Story Export) -->
+    <div id="share-card-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Export Board for Stories">
+      <div class="modal-card story-export-card">
+        <button id="share-close" class="modal-close" aria-label="Close share modal">×</button>
+        <div id="share-body"></div>
+      </div>
+    </div>
+
+    <!-- Creator Submissions Modal -->
+    <div id="submit-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-label="Submit a Sound">
+      <div class="modal-card submit-card">
+        <button id="submit-close" class="modal-close" aria-label="Close submission modal">×</button>
+        <div class="submit-modal-header">
+          <span class="story-label">Editorial Pipeline · /curate-sound</span>
+          <h2>Submit an <em>Emerging Sound</em></h2>
+          <p>Heard a sound breaking out on your campus, city, or niche feed? Submit it to the Mehfil editorial desk.</p>
+        </div>
+        <form id="creator-submit-form" class="submit-form">
+          <div class="form-row-2">
+            <label class="form-field">
+              <span>Track Title *</span>
+              <input type="text" id="sub-title" required placeholder="e.g. Roz Roz" />
+            </label>
+            <label class="form-field">
+              <span>Artist Name *</span>
+              <input type="text" id="sub-artist" required placeholder="e.g. The Yellow Diary" />
+            </label>
+          </div>
+
+          <div class="form-row-2">
+            <label class="form-field">
+              <span>Regional Scene / Language *</span>
+              <input type="text" id="sub-scene" required placeholder="e.g. Kochi Lo-Fi / Malayalam" />
+            </label>
+            <label class="form-field">
+              <span>10-15s Hook Timestamp *</span>
+              <input type="text" id="sub-hook" required placeholder="e.g. 0:34 — 0:49" />
+            </label>
+          </div>
+
+          <label class="form-field">
+            <span>Best Reel Format *</span>
+            <input type="text" id="sub-format" required placeholder="e.g. Best for sunset outfit reveals" />
+          </label>
+
+          <label class="form-field">
+            <span>Fresh Creator Angle (Your execution idea) *</span>
+            <textarea id="sub-idea" required rows="3" placeholder="Describe a non-cliché visual idea: camera cuts, pacing, lighting, or reaction frames..."></textarea>
+          </label>
+
+          <div class="form-row-2">
+            <label class="form-field">
+              <span>Listening Link (Spotify / Instagram / YT)</span>
+              <input type="url" id="sub-url" placeholder="https://open.spotify.com/..." />
+            </label>
+            <label class="form-field">
+              <span>Your Creator Handle</span>
+              <input type="text" id="sub-handle" placeholder="@yourhandle" />
+            </label>
+          </div>
+
+          <div class="submit-form-actions">
+            <button type="submit" class="submit-submit-btn">Submit to Editorial Review ↗</button>
+            <span class="submit-policy-note">Reviewed daily according to music rights & cultural guidelines.</span>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Floating Toast Notification -->
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
