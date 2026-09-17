@@ -83,9 +83,11 @@ The goal of Phase 3 is creating high-value data and partner intelligence for cre
   - [x] Animated node journeys with velocity stats, cultural commentary, and city creators.
   - [x] Interactive city pin inspection and corridor switching.
   - [x] Integrated "Trace on Map" connection directly from the Sound Story modal.
-- [ ] **Audio Cue / Synth Preview Simulator**
-  - [ ] Web Audio API procedural ambient chord / tempo preview simulator for hook cues without storing copyrighted binary files.
-  - [ ] Interactive audio visualizer wave animation while cue plays.
+- [x] **Audio Cue / Synth Preview Simulator**
+  - [x] Web Audio API procedural ambient harmonic synthesizer for 10-15s hook previews (100% zero copyright infringement).
+  - [x] 4 authentic regional acoustic archetypes: *Warm Lo-Fi & Tape Flutter*, *Desi Drill & 808 Pulse*, *Retro Synthwave & Arp Groove*, *Acoustic Baul & Folk Chime*.
+  - [x] Real-time dynamic HTML5 Canvas audio waveform visualizer.
+  - [x] Interactive hook preview triggers on Sound Cards (vinyl click & cue button), Today feed, Scene Explorer, Route Dossier, and Sound Story modal.
 - [ ] **Spotify Playlist Web Sync**
   - [ ] 1-Click export of any Vault board into a Spotify search/playlist intent or formatted tracklist import.
 - [ ] **Artist Radar Surface**

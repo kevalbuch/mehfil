@@ -892,6 +892,524 @@ function fallbackCopy(text, cb) {
   document.body.removeChild(ta);
 }
 
+// ==========================================================================
+// PROCEDURAL WEB AUDIO HOOK CUE SIMULATOR (100% Zero-Infringement Web Audio API)
+// ==========================================================================
+
+class ProceduralAudioEngine {
+  constructor() {
+    this.ctx = null;
+    this.activeNodes = [];
+    this.activeIntervals = [];
+    this.isPlaying = false;
+    this.currentSoundId = null;
+    this.analyser = null;
+    this.timerInterval = null;
+    this.remainingSeconds = 12;
+    this.onTick = null;
+    this.onStop = null;
+    this.animationFrameId = null;
+  }
+
+  init() {
+    if (!this.ctx && typeof window !== "undefined") {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        this.ctx = new AudioCtx();
+      }
+    }
+    if (this.ctx && this.ctx.state === "suspended") {
+      this.ctx.resume();
+    }
+  }
+
+  determineArchetype(sound) {
+    const text = (sound.language + " " + sound.scene + " " + sound.energy + " " + (sound.idea || "")).toLowerCase();
+    if (text.includes("drill") || text.includes("hip-hop") || text.includes("rap") || text.includes("gym") || text.includes("808")) {
+      return "drill";
+    }
+    if (text.includes("synth") || text.includes("retro") || text.includes("neon") || text.includes("dance") || text.includes("pop")) {
+      return "synthwave";
+    }
+    if (text.includes("folk") || text.includes("baul") || text.includes("flute") || text.includes("classical") || text.includes("ambient") || text.includes("tramway")) {
+      return "folk";
+    }
+    return "lofi";
+  }
+
+  getArchetypeLabel(sound) {
+    const type = this.determineArchetype(sound);
+    switch (type) {
+      case "drill": return "Desi Drill / 808 Pulse";
+      case "synthwave": return "Retro Synthwave / Arp Groove";
+      case "folk": return "Acoustic Baul / Folk Chime";
+      default: return "Warm Lo-Fi / Tape Flutter";
+    }
+  }
+
+  stop() {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
+    if (this.activeIntervals) {
+      this.activeIntervals.forEach(clearInterval);
+      this.activeIntervals = [];
+    }
+    if (this.animationFrameId && typeof cancelAnimationFrame !== "undefined") {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+
+    if (this.ctx) {
+      this.activeNodes.forEach((node) => {
+        try {
+          if (node.stop) node.stop();
+          if (node.disconnect) node.disconnect();
+        } catch (e) {}
+      });
+    }
+    this.activeNodes = [];
+    const prevId = this.currentSoundId;
+    this.isPlaying = false;
+    this.currentSoundId = null;
+    this.remainingSeconds = 12;
+
+    if (this.onStop && prevId) {
+      this.onStop(prevId);
+    }
+  }
+
+  playHookCue(sound, onTick, onStop) {
+    this.stop();
+    this.init();
+    if (!this.ctx) return;
+
+    this.isPlaying = true;
+    this.currentSoundId = sound.id;
+    this.remainingSeconds = 12;
+    this.onTick = onTick;
+    this.onStop = onStop;
+
+    const now = this.ctx.currentTime;
+    const masterGain = this.ctx.createGain();
+    masterGain.gain.setValueAtTime(0.001, now);
+    masterGain.gain.exponentialRampToValueAtTime(0.28, now + 0.3);
+    masterGain.gain.setValueAtTime(0.28, now + 11.0);
+    masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 12.0);
+
+    this.analyser = this.ctx.createAnalyser();
+    this.analyser.fftSize = 64;
+    masterGain.connect(this.analyser);
+    this.analyser.connect(this.ctx.destination);
+    this.activeNodes.push(masterGain, this.analyser);
+
+    const type = this.determineArchetype(sound);
+    if (type === "drill") {
+      this.synthesizeDrill(masterGain);
+    } else if (type === "synthwave") {
+      this.synthesizeSynthwave(masterGain);
+    } else if (type === "folk") {
+      this.synthesizeFolk(masterGain);
+    } else {
+      this.synthesizeLofi(masterGain);
+    }
+
+    if (this.onTick) this.onTick(this.remainingSeconds);
+    this.timerInterval = setInterval(() => {
+      this.remainingSeconds--;
+      if (this.onTick) this.onTick(this.remainingSeconds);
+      if (this.remainingSeconds <= 0) {
+        this.stop();
+      }
+    }, 1000);
+  }
+
+  synthesizeLofi(masterGain) {
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(1400, now);
+    filter.connect(masterGain);
+    this.activeNodes.push(filter);
+
+    const chordFrequencies = [146.83, 185.00, 220.00, 277.18]; // Dmaj7
+
+    const lfo = ctx.createOscillator();
+    lfo.frequency.setValueAtTime(4.2, now);
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.setValueAtTime(6, now);
+    lfo.connect(lfoGain);
+    lfo.start(now);
+    lfo.stop(now + 12.5);
+    this.activeNodes.push(lfo, lfoGain);
+
+    chordFrequencies.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, now);
+      lfoGain.connect(osc.detune);
+
+      const oscGain = ctx.createGain();
+      oscGain.gain.setValueAtTime(0.01, now);
+      oscGain.gain.linearRampToValueAtTime(0.08 / chordFrequencies.length, now + 0.4 + (idx * 0.1));
+
+      osc.connect(oscGain);
+      oscGain.connect(filter);
+      osc.start(now);
+      osc.stop(now + 12.5);
+      this.activeNodes.push(osc, oscGain);
+    });
+
+    try {
+      const bufferSize = ctx.sampleRate * 2;
+      const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1;
+      }
+      const whiteNoise = ctx.createBufferSource();
+      whiteNoise.buffer = noiseBuffer;
+      whiteNoise.loop = true;
+
+      const noiseFilter = ctx.createBiquadFilter();
+      noiseFilter.type = "bandpass";
+      noiseFilter.frequency.value = 1500;
+      noiseFilter.Q.value = 1.2;
+
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.value = 0.012;
+
+      whiteNoise.connect(noiseFilter);
+      noiseFilter.connect(noiseGain);
+      noiseGain.connect(masterGain);
+      whiteNoise.start(now);
+      whiteNoise.stop(now + 12.5);
+      this.activeNodes.push(whiteNoise, noiseFilter, noiseGain);
+    } catch (e) {}
+
+    const pulseInterval = setInterval(() => {
+      if (!this.isPlaying) return;
+      const t = ctx.currentTime;
+      const pulseOsc = ctx.createOscillator();
+      pulseOsc.type = "triangle";
+      pulseOsc.frequency.setValueAtTime(440, t);
+      const pGain = ctx.createGain();
+      pGain.gain.setValueAtTime(0.04, t);
+      pGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+      pulseOsc.connect(pGain);
+      pGain.connect(masterGain);
+      pulseOsc.start(t);
+      pulseOsc.stop(t + 0.4);
+    }, 1500);
+    this.activeIntervals.push(pulseInterval);
+  }
+
+  synthesizeDrill(masterGain) {
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+
+    const trigger808 = (t) => {
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(145, t);
+      osc.frequency.exponentialRampToValueAtTime(44, t + 0.28);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.35, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.75);
+
+      osc.connect(gain);
+      gain.connect(masterGain);
+      osc.start(t);
+      osc.stop(t + 0.8);
+    };
+
+    const triggerHiHat = (t) => {
+      const osc = ctx.createOscillator();
+      osc.type = "square";
+      osc.frequency.setValueAtTime(7500, t);
+      const filter = ctx.createBiquadFilter();
+      filter.type = "highpass";
+      filter.frequency.setValueAtTime(8000, t);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.06, t);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+      osc.start(t);
+      osc.stop(t + 0.06);
+    };
+
+    const notes = [329.63, 392.00, 440.00, 493.88];
+    let noteIdx = 0;
+    const triggerLead = (t) => {
+      const osc = ctx.createOscillator();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(notes[noteIdx % notes.length], t);
+      noteIdx++;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(1800, t);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.12, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+      osc.start(t);
+      osc.stop(t + 0.35);
+    };
+
+    trigger808(now);
+    triggerLead(now);
+
+    const drillInterval = setInterval(() => {
+      if (!this.isPlaying) return;
+      const t = ctx.currentTime;
+      trigger808(t);
+      triggerLead(t);
+      triggerHiHat(t + 0.25);
+      triggerHiHat(t + 0.5);
+      triggerHiHat(t + 0.75);
+    }, 1100);
+    this.activeIntervals.push(drillInterval);
+  }
+
+  synthesizeSynthwave(masterGain) {
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.Q.setValueAtTime(4.0, now);
+    filter.frequency.setValueAtTime(700, now);
+    filter.frequency.linearRampToValueAtTime(2600, now + 4.0);
+    filter.frequency.linearRampToValueAtTime(900, now + 8.0);
+    filter.connect(masterGain);
+    this.activeNodes.push(filter);
+
+    const arpNotes = [261.63, 329.63, 392.00, 493.88, 523.25];
+    let step = 0;
+
+    const arpInterval = setInterval(() => {
+      if (!this.isPlaying) return;
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      osc.type = step % 2 === 0 ? "sawtooth" : "square";
+      osc.frequency.setValueAtTime(arpNotes[step % arpNotes.length], t);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.09, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+
+      osc.connect(gain);
+      gain.connect(filter);
+      osc.start(t);
+      osc.stop(t + 0.25);
+
+      if (step % 4 === 0) {
+        const kick = ctx.createOscillator();
+        kick.type = "sine";
+        kick.frequency.setValueAtTime(130, t);
+        kick.frequency.exponentialRampToValueAtTime(50, t + 0.15);
+        const kGain = ctx.createGain();
+        kGain.gain.setValueAtTime(0.25, t);
+        kGain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+        kick.connect(kGain);
+        kGain.connect(masterGain);
+        kick.start(t);
+        kick.stop(t + 0.22);
+      }
+
+      step++;
+    }, 220);
+    this.activeIntervals.push(arpInterval);
+  }
+
+  synthesizeFolk(masterGain) {
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+
+    const droneFreqs = [138.59, 207.65, 277.18];
+    droneFreqs.forEach((freq) => {
+      const osc = ctx.createOscillator();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(freq, now);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.05, now + 1.2);
+
+      osc.connect(gain);
+      gain.connect(masterGain);
+      osc.start(now);
+      osc.stop(now + 12.5);
+      this.activeNodes.push(osc, gain);
+    });
+
+    const chimeFreqs = [277.18, 311.13, 349.23, 415.30, 466.16];
+    let chimeIdx = 0;
+
+    const chimeInterval = setInterval(() => {
+      if (!this.isPlaying) return;
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(chimeFreqs[chimeIdx % chimeFreqs.length], t);
+      chimeIdx++;
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.12, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.65);
+
+      osc.connect(gain);
+      gain.connect(masterGain);
+      osc.start(t);
+      osc.stop(t + 0.7);
+    }, 650);
+    this.activeIntervals.push(chimeInterval);
+  }
+
+  drawWaveform(canvas) {
+    if (!canvas || !this.analyser || typeof canvas.getContext !== "function") return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const width = canvas.width;
+    const height = canvas.height;
+    const bufferLength = this.analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
+    const render = () => {
+      if (!this.isPlaying) {
+        ctx.clearRect(0, 0, width, height);
+        ctx.beginPath();
+        ctx.moveTo(0, height / 2);
+        ctx.lineTo(width, height / 2);
+        ctx.strokeStyle = "#ded6c7";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        return;
+      }
+
+      if (typeof requestAnimationFrame !== "undefined") {
+        this.animationFrameId = requestAnimationFrame(render);
+      }
+      this.analyser.getByteTimeDomainData(dataArray);
+
+      ctx.clearRect(0, 0, width, height);
+
+      ctx.fillStyle = "rgba(251, 247, 238, 0.45)";
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#c85a32";
+      ctx.beginPath();
+
+      const sliceWidth = width / bufferLength;
+      let x = 0;
+
+      for (let i = 0; i < bufferLength; i++) {
+        const v = dataArray[i] / 128.0;
+        const y = (v * height) / 2;
+
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+        x += sliceWidth;
+      }
+
+      ctx.lineTo(width, height / 2);
+      ctx.stroke();
+
+      const freqData = new Uint8Array(bufferLength);
+      this.analyser.getByteFrequencyData(freqData);
+      const barWidth = (width / 14) - 2;
+      for (let j = 0; j < 14; j++) {
+        const barHeight = (freqData[j * 2] / 255) * (height * 0.7);
+        ctx.fillStyle = "rgba(217, 119, 54, 0.32)";
+        ctx.fillRect(j * (barWidth + 2), height - barHeight, barWidth, barHeight);
+      }
+    };
+
+    render();
+  }
+}
+
+const audioEngine = new ProceduralAudioEngine();
+
+function toggleHookCuePlay(sound, btnEl, cardRoot) {
+  if (audioEngine.isPlaying && audioEngine.currentSoundId === sound.id) {
+    audioEngine.stop();
+    return;
+  }
+
+  // Clear any existing playing states
+  document.querySelectorAll(".sound-card.is-playing, .today-card.is-playing, .scene-track-card.is-playing").forEach((el) => {
+    el.classList.remove("is-playing");
+    const eq = el.querySelector(".cue-equalizer");
+    if (eq) eq.remove();
+  });
+  document.querySelectorAll(".card-cue-btn, .today-cue-btn, .scene-cue-btn, .preview-cue-btn").forEach((btn) => {
+    btn.classList.remove("is-playing");
+    btn.textContent = "▶ Cue";
+  });
+
+  if (cardRoot) {
+    cardRoot.classList.add("is-playing");
+    const art = cardRoot.querySelector(".art") || cardRoot.querySelector(".today-art");
+    if (art && !art.querySelector(".cue-equalizer")) {
+      const eq = document.createElement("div");
+      eq.className = "cue-equalizer";
+      eq.innerHTML = "<span></span><span></span><span></span><span></span>";
+      art.append(eq);
+    }
+  }
+
+  if (btnEl) {
+    btnEl.classList.add("is-playing");
+    btnEl.textContent = "■ 0:12";
+  }
+
+  audioEngine.playHookCue(
+    sound,
+    (seconds) => {
+      const secFormatted = `0:${String(seconds).padStart(2, "0")}`;
+      if (btnEl) btnEl.textContent = `■ ${secFormatted}`;
+      const timerEl = document.querySelector("#modal-cue-timer");
+      if (timerEl) timerEl.textContent = secFormatted;
+    },
+    (stoppedId) => {
+      if (btnEl) {
+        btnEl.classList.remove("is-playing");
+        btnEl.textContent = "▶ Cue";
+      }
+      if (cardRoot) {
+        cardRoot.classList.remove("is-playing");
+        const eq = cardRoot.querySelector(".cue-equalizer");
+        if (eq) eq.remove();
+      }
+      const modalPlayBtn = document.querySelector("#modal-cue-play-btn");
+      if (modalPlayBtn) {
+        modalPlayBtn.classList.remove("is-playing");
+        modalPlayBtn.innerHTML = '<span class="play-icon">▶</span> Preview Hook Cue';
+      }
+      const timerEl = document.querySelector("#modal-cue-timer");
+      if (timerEl) timerEl.textContent = "0:12";
+    }
+  );
+}
+
 // 6. Render Post Match Cards
 function renderMatchCards() {
   if (!grid || !template) return;
@@ -928,6 +1446,23 @@ function renderMatchCards() {
       twinsEl.textContent = `Twin: ${sound.soundTwins[0]}`;
     }
 
+    // Cue preview button & vinyl orb click
+    const cueBtn = card.querySelector(".card-cue-btn");
+    const orb = card.querySelector(".orb");
+    if (cueBtn) {
+      cueBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleHookCuePlay(sound, cueBtn, root);
+      });
+    }
+    if (orb) {
+      orb.style.cursor = "pointer";
+      orb.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleHookCuePlay(sound, cueBtn, root);
+      });
+    }
+
     // Blueprint copy button
     const blueprintBtn = card.querySelector(".copy-blueprint-btn");
     if (blueprintBtn) {
@@ -956,7 +1491,7 @@ function renderMatchCards() {
 
     // Click card to open modal story
     root.addEventListener("click", (e) => {
-      if (e.target.closest(".save") || e.target.closest(".open-link") || e.target.closest(".copy-blueprint-btn")) return;
+      if (e.target.closest(".save") || e.target.closest(".open-link") || e.target.closest(".copy-blueprint-btn") || e.target.closest(".card-cue-btn") || e.target.closest(".orb")) return;
       openSoundStory(sound);
     });
 
@@ -1011,11 +1546,29 @@ function renderTodayFeed(editionId = currentEdition) {
             : ""
         }
         <div class="today-actions">
+          <button class="today-cue-btn" data-sound="${sound.id}">▶ Cue</button>
           <button class="view-story-btn" data-sound="${sound.id}">View story ↗</button>
           <a class="listen-outbound" href="${sound.outboundUrl}" target="_blank" rel="noopener noreferrer">Listen on Spotify ↗</a>
         </div>
       </div>
     `;
+
+    const cueBtn = el.querySelector(".today-cue-btn");
+    if (cueBtn) {
+      cueBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleHookCuePlay(sound, cueBtn, el);
+      });
+    }
+
+    const todayOrb = el.querySelector(".today-orb");
+    if (todayOrb) {
+      todayOrb.style.cursor = "pointer";
+      todayOrb.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleHookCuePlay(sound, cueBtn, el);
+      });
+    }
 
     el.querySelector(".view-story-btn").addEventListener("click", () => openSoundStory(sound));
     todayGrid.append(el);
@@ -1107,6 +1660,26 @@ function openSoundStory(sound) {
           <strong>${sound.hook}</strong>
           <p>Cue: The exact beat / vocal switch suited for high-retention short form videos.</p>
         </div>
+
+        <!-- Procedural Audio Hook Cue Simulator -->
+        <div class="cue-player-box">
+          <div class="cue-player-header">
+            <span>PROCEDURAL HOOK CUE SIMULATOR</span>
+            <span class="cue-archetype-tag">● ${audioEngine.getArchetypeLabel(sound)}</span>
+          </div>
+          <div class="cue-player-main">
+            <button class="modal-cue-play-btn" id="modal-cue-play-btn" type="button">
+              <span class="play-icon">▶</span> Preview Hook Cue
+            </button>
+            <div class="cue-waveform-wrap">
+              <canvas class="cue-waveform-canvas" id="modal-cue-waveform" width="280" height="38"></canvas>
+            </div>
+            <span class="cue-timer-display" id="modal-cue-timer">0:12</span>
+          </div>
+          <p class="cue-legal-note">
+            <strong>✦ Zero Copyright Risk:</strong> Procedural Web Audio API synthesis modeled on regional instruments & rhythm patterns. Full official tracks stream on Spotify.
+          </p>
+        </div>
       </div>
       <div class="story-block">
         <span class="story-label">Non-Cliché Creator Idea</span>
@@ -1157,12 +1730,65 @@ function openSoundStory(sound) {
     modalSaveBtn.textContent = updated ? `✓ Saved in "${activeBoard}"` : `＋ Save to "${activeBoard}"`;
   });
 
+  // Modal procedural hook cue player
+  const modalCuePlayBtn = modalContent.querySelector("#modal-cue-play-btn");
+  const modalWaveform = modalContent.querySelector("#modal-cue-waveform");
+  const modalTimer = modalContent.querySelector("#modal-cue-timer");
+
+  if (modalWaveform && typeof modalWaveform.getContext === "function") {
+    const wCtx = modalWaveform.getContext("2d");
+    if (wCtx) {
+      wCtx.beginPath();
+      wCtx.moveTo(0, modalWaveform.height / 2);
+      wCtx.lineTo(modalWaveform.width, modalWaveform.height / 2);
+      wCtx.strokeStyle = "#ded6c7";
+      wCtx.lineWidth = 1.5;
+      wCtx.stroke();
+    }
+  }
+
+  if (modalCuePlayBtn) {
+    if (audioEngine.isPlaying && audioEngine.currentSoundId === sound.id) {
+      modalCuePlayBtn.classList.add("is-playing");
+      modalCuePlayBtn.innerHTML = '<span class="play-icon">■</span> Stop Hook Cue';
+      if (modalTimer) modalTimer.textContent = `0:${String(audioEngine.remainingSeconds).padStart(2, "0")}`;
+      if (modalWaveform) audioEngine.drawWaveform(modalWaveform);
+    }
+
+    modalCuePlayBtn.addEventListener("click", () => {
+      if (audioEngine.isPlaying && audioEngine.currentSoundId === sound.id) {
+        audioEngine.stop();
+        modalCuePlayBtn.classList.remove("is-playing");
+        modalCuePlayBtn.innerHTML = '<span class="play-icon">▶</span> Preview Hook Cue';
+        if (modalTimer) modalTimer.textContent = "0:12";
+      } else {
+        modalCuePlayBtn.classList.add("is-playing");
+        modalCuePlayBtn.innerHTML = '<span class="play-icon">■</span> Stop Hook Cue';
+        audioEngine.playHookCue(
+          sound,
+          (sec) => {
+            if (modalTimer) modalTimer.textContent = `0:${String(sec).padStart(2, "0")}`;
+          },
+          () => {
+            if (modalCuePlayBtn) {
+              modalCuePlayBtn.classList.remove("is-playing");
+              modalCuePlayBtn.innerHTML = '<span class="play-icon">▶</span> Preview Hook Cue';
+            }
+            if (modalTimer) modalTimer.textContent = "0:12";
+          }
+        );
+        if (modalWaveform) audioEngine.drawWaveform(modalWaveform);
+      }
+    });
+  }
+
   modalOverlay.classList.remove("hidden");
   document.body.style.overflow = "hidden";
 }
 
 function closeSoundStory() {
   if (!modalOverlay) return;
+  if (typeof audioEngine !== "undefined") audioEngine.stop();
   modalOverlay.classList.add("hidden");
   document.body.style.overflow = "";
 }
@@ -1995,10 +2621,19 @@ function renderSceneExplorer(hubKey = "all") {
       <div class="scene-sound-hook"><span>Hook:</span> <strong>${sound.hook}</strong></div>
       <p class="scene-sound-best">${sound.best}</p>
       <div class="scene-card-actions">
+        <button class="scene-cue-btn" data-sound="${sound.id}">▶ Cue</button>
         <button class="scene-view-btn" data-sound="${sound.id}">View Story ↗</button>
         <button class="scene-copy-btn" data-sound="${sound.id}">📋 Copy</button>
       </div>
     `;
+
+    const sceneCueBtn = item.querySelector(".scene-cue-btn");
+    if (sceneCueBtn) {
+      sceneCueBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleHookCuePlay(sound, sceneCueBtn, item);
+      });
+    }
 
     item.querySelector(".scene-view-btn").addEventListener("click", () => openSoundStory(sound));
     item.querySelector(".scene-copy-btn").addEventListener("click", (e) => {
@@ -2414,11 +3049,19 @@ function renderRouteDossier(activeRoute) {
         <strong>${sound.hook}</strong>
       </div>
       <div class="sound-preview-actions">
-        <button class="preview-view-story-btn" id="dossier-story-btn">View Sound Story ↗</button>
-        <button class="preview-copy-btn" id="dossier-copy-btn">📋 Copy Blueprint</button>
+        <button class="preview-cue-btn" id="dossier-cue-btn">▶ Hook Cue</button>
+        <button class="preview-view-story-btn" id="dossier-story-btn">Story ↗</button>
+        <button class="preview-copy-btn" id="dossier-copy-btn">📋 Blueprint</button>
       </div>
     </div>
   `;
+
+  const cueBtn = dossier.querySelector("#dossier-cue-btn");
+  if (cueBtn) {
+    cueBtn.addEventListener("click", () => {
+      toggleHookCuePlay(sound, cueBtn, dossier.querySelector(".dossier-sound-preview"));
+    });
+  }
 
   const storyBtn = dossier.querySelector("#dossier-story-btn");
   const copyBtn = dossier.querySelector("#dossier-copy-btn");
@@ -2465,6 +3108,7 @@ function renderRoutesSection(routeId) {
 // Global escape key handler
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
+    if (typeof audioEngine !== "undefined") audioEngine.stop();
     closeSoundStory();
     closeTastePassportModal();
     closeShareBoardModal();
