@@ -21,6 +21,7 @@
         <a class="nav-link" href="#today">Today</a>
         <a class="nav-link active" href="#match">Post match</a>
         <a class="nav-link" href="#scenes">Scenes</a>
+        <a class="nav-link" href="#routes">Sound Routes</a>
         <a class="nav-link" href="#search">Search</a>
         <a class="nav-link" href="#vault">Your vault <span class="saved-count">0</span></a>
       </nav>
@@ -136,7 +137,67 @@
         </div>
       </section>
 
-      <!-- 4. Catch The Sound (Search) -->
+      <!-- 5. Interactive Geographic Sound Routes (Phase 3 Feature) -->
+      <section class="routes-section" id="routes">
+        <div class="routes-header">
+          <div class="routes-header-text">
+            <p class="eyebrow"><span></span> Cartographic Sound Intelligence</p>
+            <h2>Sound Routes:<br /><em>How music moves across India.</em></h2>
+            <p class="routes-desc">Indian music doesn't spread uniformly—it leaps along cultural corridors. Trace how underground street rap, cafe lo-fi, and acoustic baul travel from regional subcultures to college fests, creator feeds, and national FYPs.</p>
+          </div>
+          <div class="routes-stats-strip">
+            <div class="route-stat-item">
+              <span class="route-stat-val">12</span>
+              <span class="route-stat-lbl">Active Hubs</span>
+            </div>
+            <div class="route-stat-item">
+              <span class="route-stat-val">6</span>
+              <span class="route-stat-lbl">Migration Corridors</span>
+            </div>
+            <div class="route-stat-item">
+              <span class="route-stat-val">38d</span>
+              <span class="route-stat-lbl">Avg. Niche to FYP</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Corridor Switcher Navigation -->
+        <div class="routes-corridor-nav" id="routes-corridor-nav" role="tablist" aria-label="Sound migration corridors"></div>
+
+        <!-- Map & Dossier Split Layout -->
+        <div class="routes-layout">
+          <!-- Cartographic Vector Map Card -->
+          <div class="routes-map-card">
+            <div class="map-card-header">
+              <div class="map-title-group">
+                <span class="map-edition-tag">CARTOGRAPHIC DESK · FIELD DISPATCH</span>
+                <h3 id="map-active-corridor-name">Majha Drill Corridor</h3>
+              </div>
+              <div class="map-legend">
+                <span class="legend-item"><span class="legend-dot origin"></span> Origin</span>
+                <span class="legend-item"><span class="legend-dot catalyst"></span> Catalyst</span>
+                <span class="legend-item"><span class="legend-dot scale"></span> Scale</span>
+              </div>
+            </div>
+
+            <div class="map-svg-wrap" id="map-svg-wrap">
+              <!-- Rendered dynamically by app.js -->
+            </div>
+
+            <div class="map-footer-note">
+              <span>✦ Click any city pin or corridor tab to inspect migration telemetry</span>
+              <span class="map-scale-text">Coordination: Subcultural Velocity</span>
+            </div>
+          </div>
+
+          <!-- Route Dossier & Telemetry Panel -->
+          <aside class="route-dossier" id="route-dossier" aria-live="polite">
+            <!-- Rendered dynamically by app.js -->
+          </aside>
+        </div>
+      </section>
+
+      <!-- 6. Catch The Sound (Search) -->
       <section class="search-section" id="search">
         <div class="search-intro">
           <p class="eyebrow"><span></span> Catch the sound</p>

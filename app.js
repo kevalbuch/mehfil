@@ -1027,10 +1027,15 @@ function openSoundStory(sound) {
   if (!modalOverlay || !modalContent) return;
 
   const route = getSoundRoute(sound);
-  const captionHook = `Found this before it peaks 🕊️ // ${sound.title} by ${sound.artist}`;
   const twinBadges = sound.soundTwins && sound.soundTwins.length
     ? sound.soundTwins.map((t) => `<span class="twin-pill">✦ ${t}</span>`).join(" ")
     : "None listed";
+
+  const captionHook = `Found this before it peaks 🕊️ // ${sound.title} by ${sound.artist}`;
+  const matchedCorridor = typeof soundRoutes !== "undefined" ? soundRoutes.find((r) => r.soundId === sound.id) : null;
+  const corridorAction = matchedCorridor 
+    ? `<button class="route-map-jump-btn" id="route-map-jump-btn">🗺️ Trace on Map ↗</button>` 
+    : "";
 
   modalContent.innerHTML = `
     <div class="story-header" style="--tone:var(--${sound.tone})">
@@ -1052,7 +1057,10 @@ function openSoundStory(sound) {
       <div class="story-block sound-route-block">
         <div class="route-header">
           <span class="story-label">Sound Route · Cultural Trajectory</span>
-          <span class="route-badge stage-${sound.stage.toLowerCase().replace(/\s+/g, "-")}">● ${sound.stage}</span>
+          <div class="route-header-right">
+            ${corridorAction}
+            <span class="route-badge stage-${sound.stage.toLowerCase().replace(/\s+/g, "-")}">● ${sound.stage}</span>
+          </div>
         </div>
         <div class="route-track">
           ${route.nodes.map((node, i) => `
@@ -1101,27 +1109,33 @@ function openSoundStory(sound) {
         </div>
       </div>
       <div class="story-block">
-        <span class="story-label">Best Format Match</span>
-        <p class="format-text">${sound.best}</p>
+        <span class="story-label">Non-Cliché Creator Idea</span>
+        <p class="idea-text">${sound.idea}</p>
       </div>
       <div class="story-block">
-        <span class="story-label">Fresh Angle (Original Execution Concept)</span>
-        <div class="idea-box">
-          <p>${sound.idea}</p>
-        </div>
-      </div>
-      <div class="story-block">
-        <span class="story-label">Sound Twins (Less Saturated Alternatives)</span>
-        <div class="twins-container">${twinBadges}</div>
+        <span class="story-label">Sound Twins (Aesthetic Counterparts)</span>
+        <p class="twins-text">${twinBadges}</p>
       </div>
       <div class="story-actions">
-        <a class="primary-btn" href="${sound.outboundUrl}" target="_blank" rel="noopener noreferrer">Listen on Spotify <span>↗</span></a>
-        <a class="secondary-btn" href="https://www.youtube.com/results?search_query=${encodeURIComponent(sound.title + ' ' + sound.artist)}" target="_blank" rel="noopener noreferrer">Search on YouTube <span>↗</span></a>
+        <a class="listen-link" href="${sound.outboundUrl}" target="_blank" rel="noopener noreferrer">Listen on Spotify ↗</a>
         <button class="save-modal-btn" id="modal-save-btn">Save to "${activeBoard}"</button>
       </div>
       <p class="rights-disclaimer">Curated editorial layer. Mehfil respects music rights and connects you directly to official streaming platforms.</p>
     </div>
   `;
+
+  // Jump to Corridor Map listener
+  const mapJumpBtn = modalContent.querySelector("#route-map-jump-btn");
+  if (mapJumpBtn && matchedCorridor) {
+    mapJumpBtn.addEventListener("click", () => {
+      closeSoundStory();
+      renderRoutesSection(matchedCorridor.id);
+      const routesSection = document.querySelector("#routes");
+      if (routesSection) {
+        routesSection.scrollIntoView({ behavior: "smooth" });
+      }
+    });
+  }
 
   // Blueprint copy button in modal
   const modalBlueprintBtn = modalContent.querySelector("#modal-blueprint-btn");
@@ -2064,6 +2078,390 @@ function attachPhase2Listeners() {
   });
 }
 
+// 18. Phase 3 Feature: Sound Routes & Cartographic Intelligence
+const allHubs = [
+  { id: "srinagar", name: "Srinagar", x: 235, y: 100, hubKey: "srinagar", desc: "Sufi & Kashmiri folk ambient" },
+  { id: "ludhiana", name: "Ludhiana", x: 240, y: 170, hubKey: "chandigarh", desc: "Majha street rap & folk tumbe" },
+  { id: "chandigarh", name: "Chandigarh", x: 258, y: 175, hubKey: "chandigarh", desc: "Punjabi college anthems" },
+  { id: "delhi", name: "Delhi NCR", x: 280, y: 220, hubKey: "delhi", desc: "North campus indie & bedroom pop" },
+  { id: "jaipur", name: "Jaipur", x: 245, y: 255, hubKey: "all", desc: "Desert folk roots & heritage" },
+  { id: "ahmedabad", name: "Ahmedabad", x: 185, y: 325, hubKey: "ahmedabad", desc: "Urban garba & Gujarati acoustic" },
+  { id: "mumbai", name: "Mumbai", x: 195, y: 415, hubKey: "pune", desc: "Film archive rework & indie rock" },
+  { id: "pune", name: "Pune", x: 215, y: 435, hubKey: "pune", desc: "Maharashtra college alt-pop" },
+  { id: "goa", name: "Goa", x: 215, y: 495, hubKey: "all", desc: "Sunset coastal aesthetics & psych" },
+  { id: "hyderabad", name: "Hyderabad", x: 310, y: 450, hubKey: "hyderabad", desc: "Deccan groove & Dakhni rap" },
+  { id: "bengaluru", name: "Bengaluru", x: 285, y: 545, hubKey: "bengaluru", desc: "Indiranagar bedroom pop & Kannada indie" },
+  { id: "chennai", name: "Chennai", x: 345, y: 535, hubKey: "chennai", desc: "Besant Nagar synthwave & Tamil indie" },
+  { id: "kochi", name: "Kochi", x: 255, y: 615, hubKey: "kochi", desc: "Fort Kochi lo-fi & Malabar acoustic" },
+  { id: "kolkata", name: "Kolkata", x: 500, y: 335, hubKey: "kolkata", desc: "College Street adda & Baul indie" },
+  { id: "guwahati", name: "Guwahati", x: 565, y: 265, hubKey: "guwahati", desc: "Brahmaputra ambient & hill folk" },
+  { id: "shillong", name: "Shillong", x: 568, y: 285, hubKey: "guwahati", desc: "Pine trail acoustic rock" }
+];
+
+const soundRoutes = [
+  {
+    id: "majha-drill",
+    title: "Majha Drill Corridor",
+    soundId: "gal-sunja",
+    subtitle: "Ludhiana ➔ Delhi NCR ➔ Mumbai & Pan-India",
+    velocityDays: 34,
+    velocityScore: 96,
+    momentumLabel: "High-Velocity Breakout",
+    originHub: "Ludhiana & Chandigarh",
+    catalystHub: "Delhi NCR Campus Circuit",
+    scaleHub: "Mumbai & Pan-India FYP",
+    fieldNotes: "Started in Ludhiana basement studios with raw 808s and Punjabi folk tumbe riffs. Leaped when Delhi University gym & fashion creators adopted the 0:48 hook for quick-cut contrast reels, forcing national algorithmic pickup on reels and Spotify.",
+    nodes: [
+      { city: "Ludhiana", x: 240, y: 170, role: "origin", roleLabel: "Origin Hub", desc: "Street cypher & raw 808s recording" },
+      { city: "Delhi NCR", x: 280, y: 220, role: "catalyst", roleLabel: "Campus Catalyst", desc: "Gym PRs & university fashion edits" },
+      { city: "Mumbai", x: 195, y: 415, role: "scale", roleLabel: "National Scale", desc: "National FYP & OTT webseries sync" }
+    ],
+    pathD: "M 240 170 C 255 190 270 205 280 220 C 250 280 215 350 195 415"
+  },
+  {
+    id: "malabar-lofi",
+    title: "Malabar Monsoon Drift",
+    soundId: "aalolam",
+    subtitle: "Kochi ➔ Goa ➔ Mumbai Indie Sync",
+    velocityDays: 52,
+    velocityScore: 88,
+    momentumLabel: "Atmospheric Organic Burn",
+    originHub: "Fort Kochi Cafes",
+    catalystHub: "Goa Coastal Vlogs",
+    scaleHub: "Mumbai Indie Film Sync",
+    fieldNotes: "Composed on acoustic guitar in Fort Kochi during heavy July downpours. Backpacker creators carried it to Goa sunset reels, where film-aesthetic lifestyle accounts gave it a serene, timeless quality that caught streaming editors' attention.",
+    nodes: [
+      { city: "Kochi", x: 255, y: 615, role: "origin", roleLabel: "Origin Hub", desc: "Acoustic nylon session during monsoon" },
+      { city: "Goa", x: 215, y: 495, role: "catalyst", roleLabel: "Aesthetic Catalyst", desc: "Ferry transits & 35mm coastal film dumps" },
+      { city: "Mumbai", x: 195, y: 415, role: "scale", roleLabel: "National Scale", desc: "Indie cinema soundtrack licensing" }
+    ],
+    pathD: "M 255 615 C 235 570 220 530 215 495 C 210 460 200 440 195 415"
+  },
+  {
+    id: "chennai-synth",
+    title: "Besant Nagar Retro Wave",
+    soundId: "katchi-sera",
+    subtitle: "Chennai ➔ Bengaluru ➔ Global Tamil Diaspora",
+    velocityDays: 28,
+    velocityScore: 98,
+    momentumLabel: "Viral Diaspora Cross-Pollination",
+    originHub: "Besant Nagar Studios",
+    catalystHub: "Bengaluru Design Studios",
+    scaleHub: "Global Diaspora Feeds",
+    fieldNotes: "Blends retro synth grooves with acoustic nadaswaram accents. Leaped when Bengaluru motion designers paired the hook with Tamil kinetic typography, going viral across London, Toronto, and Singapore creator feeds.",
+    nodes: [
+      { city: "Chennai", x: 345, y: 535, role: "origin", roleLabel: "Origin Hub", desc: "Analogue synthesizer & retro guitar hook" },
+      { city: "Bengaluru", x: 285, y: 545, role: "catalyst", roleLabel: "Design Catalyst", desc: "Kinetic typography & streetwear styling" },
+      { city: "Kolkata", x: 500, y: 335, role: "scale", roleLabel: "Diaspora Gateway", desc: "Pan-Indian viral audio & diaspora feeds" }
+    ],
+    pathD: "M 345 535 C 320 540 305 542 285 545 C 340 480 430 410 500 335"
+  },
+  {
+    id: "bengaluru-bedroom",
+    title: "Garden City Bedroom Circuit",
+    soundId: "belakina-kavithe",
+    subtitle: "Bengaluru ➔ Pune ➔ Delhi NCR",
+    velocityDays: 41,
+    velocityScore: 91,
+    momentumLabel: "Late-Night Organic Drift",
+    originHub: "Indiranagar Rooftops",
+    catalystHub: "Pune Student Cafes",
+    scaleHub: "Delhi NCR Late-Night FYP",
+    fieldNotes: "Born in a quiet 3rd-floor attic studio off 12th Main. Tech and design creators used it for subtle couple soft-launches and ambient work-from-cafe reels, spreading northward through student communities in Pune and Delhi.",
+    nodes: [
+      { city: "Bengaluru", x: 285, y: 545, role: "origin", roleLabel: "Origin Hub", desc: "Terrace acoustic demo after midnight" },
+      { city: "Pune", x: 215, y: 435, role: "catalyst", roleLabel: "Student Catalyst", desc: "Soft-launch relationship reels & study edits" },
+      { city: "Delhi NCR", x: 280, y: 220, role: "scale", roleLabel: "National Scale", desc: "Late-night highway drive reflections" }
+    ],
+    pathD: "M 285 545 C 250 500 230 470 215 435 C 235 360 260 290 280 220"
+  },
+  {
+    id: "baul-modernist",
+    title: "Baul Modernist Corridor",
+    soundId: "amake-amar-moto",
+    subtitle: "Kolkata ➔ Jaipur ➔ Mumbai Cinephiles",
+    velocityDays: 60,
+    velocityScore: 84,
+    momentumLabel: "Heritage Acoustic Resonance",
+    originHub: "College Street Adda",
+    catalystHub: "Jaipur Heritage Photowalks",
+    scaleHub: "Mumbai Arts Circuit",
+    fieldNotes: "Dotara strings layered over subtle acoustic guitar and melancholic poetry. Picked up during autumn heritage photowalks and carried across architectural travel journeys, establishing it as the definitive soundtrack for Indian heritage travelogues.",
+    nodes: [
+      { city: "Kolkata", x: 500, y: 335, role: "origin", roleLabel: "Origin Hub", desc: "Adda dotara & acoustic baul recording" },
+      { city: "Jaipur", x: 245, y: 255, role: "catalyst", roleLabel: "Heritage Catalyst", desc: "Architecture photowalks & 35mm film stills" },
+      { city: "Mumbai", x: 195, y: 415, role: "scale", roleLabel: "National Scale", desc: "Arthouse documentary & festival score" }
+    ],
+    pathD: "M 500 335 C 410 290 320 270 245 255 C 220 310 205 360 195 415"
+  },
+  {
+    id: "northeast-drift",
+    title: "Brahmaputra Mountain Arc",
+    soundId: "majuli",
+    subtitle: "Guwahati ➔ Shillong ➔ Delhi NCR",
+    velocityDays: 45,
+    velocityScore: 89,
+    momentumLabel: "Atmospheric Backpacker Surge",
+    originHub: "Guwahati Riverside",
+    catalystHub: "Shillong Hills",
+    scaleHub: "Delhi NCR Travel Creators",
+    fieldNotes: "Recorded with morning mist over the Brahmaputra river. Backpacker creators traveling through Meghalaya set solo hiking time-lapses to its soaring chorus, sparking a national wave of nature, monsoon, and motorcycle road trip reels.",
+    nodes: [
+      { city: "Guwahati", x: 565, y: 265, role: "origin", roleLabel: "Origin Hub", desc: "Riverfront bamboo flute & soaring vocals" },
+      { city: "Shillong", x: 568, y: 285, role: "catalyst", roleLabel: "Hill Catalyst", desc: "Pine trail backpacking time-lapses" },
+      { city: "Delhi NCR", x: 280, y: 220, role: "scale", roleLabel: "National Scale", desc: "Expedition & highway road trip reels" }
+    ],
+    pathD: "M 565 265 C 570 275 568 280 568 285 C 470 260 380 240 280 220"
+  }
+];
+
+let currentRouteId = "majha-drill";
+
+function handleCityNodeClick(cityName) {
+  const matchingRoutes = soundRoutes.filter((r) => r.nodes.some((n) => n.city === cityName));
+  if (matchingRoutes.length > 0) {
+    if (matchingRoutes.some((r) => r.id === currentRouteId)) {
+      const activeRoute = soundRoutes.find((r) => r.id === currentRouteId);
+      const nodeInfo = activeRoute.nodes.find((n) => n.city === cityName);
+      showToast(`📍 ${cityName}: ${nodeInfo ? nodeInfo.roleLabel + " — " + nodeInfo.desc : "Active corridor hub"}`);
+    } else {
+      renderRoutesSection(matchingRoutes[0].id);
+      showToast(`Switched to ${matchingRoutes[0].title} passing through ${cityName}`);
+    }
+  } else {
+    showToast(`📍 ${cityName} Hub: Mapped across regional sound archives.`);
+  }
+}
+
+function renderSvgMap(activeRoute) {
+  const wrap = document.querySelector("#map-svg-wrap");
+  if (!wrap) return;
+
+  const activeCityNames = new Set(activeRoute.nodes.map((n) => n.city));
+  const passiveHubs = allHubs.filter((h) => !activeCityNames.has(h.name));
+
+  const svg = `
+    <svg viewBox="0 0 650 720" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Interactive Sound Migration Map of India">
+      <!-- Coordinate Grids -->
+      <g class="map-grid-layer" opacity="0.65">
+        <line x1="80" y1="120" x2="620" y2="120" class="grid-line" />
+        <text x="90" y="115" class="grid-label">32°N</text>
+        <line x1="80" y1="280" x2="620" y2="280" class="grid-line" />
+        <text x="90" y="275" class="grid-label">24°N</text>
+        <line x1="80" y1="460" x2="620" y2="460" class="grid-line" />
+        <text x="90" y="455" class="grid-label">16°N</text>
+        <line x1="80" y1="620" x2="620" y2="620" class="grid-line" />
+        <text x="90" y="615" class="grid-label">8°N</text>
+
+        <line x1="180" y1="80" x2="180" y2="660" class="grid-line" />
+        <text x="185" y="665" class="grid-label">72°E</text>
+        <line x1="320" y1="80" x2="320" y2="660" class="grid-line" />
+        <text x="325" y="665" class="grid-label">80°E</text>
+        <line x1="480" y1="80" x2="480" y2="660" class="grid-line" />
+        <text x="485" y="665" class="grid-label">88°E</text>
+      </g>
+
+      <!-- Cartographic Compass & Seal -->
+      <g class="compass-rose" transform="translate(565, 80)">
+        <circle cx="0" cy="0" r="22" stroke="#8a7e6b" stroke-width="0.8" fill="#faf5ea" stroke-dasharray="2, 2" />
+        <polygon points="0,-16 4,-3 0,0 -4,-3" fill="#c85a32" />
+        <polygon points="0,16 4,3 0,0 -4,3" fill="#8a7e6b" />
+        <polygon points="16,0 3,4 0,0 3,-4" fill="#8a7e6b" />
+        <polygon points="-16,0 -3,4 0,0 -3,-4" fill="#8a7e6b" />
+        <text x="0" y="-20" text-anchor="middle">N</text>
+      </g>
+
+      <!-- India Stylized Cartographic Silhouette -->
+      <path class="india-landmass" d="
+        M 235,80
+        C 260,85 270,110 265,135
+        C 275,150 300,165 330,200
+        C 380,215 440,245 480,260
+        C 490,260 520,240 560,230
+        C 590,225 615,220 620,235
+        C 625,255 605,280 600,310
+        C 585,335 565,330 550,305
+        C 540,290 520,300 505,335
+        C 490,355 450,370 420,410
+        C 390,440 365,490 345,535
+        C 325,580 305,630 280,680
+        C 265,650 250,610 245,570
+        C 230,530 215,495 210,460
+        C 205,435 195,415 190,380
+        C 180,360 150,365 130,350
+        C 115,340 120,315 140,305
+        C 120,290 145,270 170,270
+        C 185,260 195,240 200,210
+        C 205,180 215,160 215,140
+        C 215,115 220,95 235,80 Z
+      " />
+
+      <!-- Active Route Trajectory Arcs -->
+      <g class="trajectory-group">
+        <path d="${activeRoute.pathD}" class="route-path-glow" />
+        <path d="${activeRoute.pathD}" class="route-path-main" />
+        <path d="${activeRoute.pathD}" class="route-travel-dash" />
+      </g>
+
+      <!-- Passive Regional City Hubs -->
+      <g class="passive-hubs-layer">
+        ${passiveHubs
+          .map(
+            (hub) => `
+          <g class="passive-pin map-node" data-city="${hub.name}" data-hubkey="${hub.hubKey}" transform="translate(${hub.x}, ${hub.y})">
+            <circle cx="0" cy="0" r="3.5" />
+            <text x="6" y="3">${hub.name}</text>
+          </g>
+        `
+          )
+          .join("")}
+      </g>
+
+      <!-- Active Corridor Nodes -->
+      <g class="active-nodes-layer">
+        ${activeRoute.nodes
+          .map((node) => {
+            const roleColor = node.role === "origin" ? "#c85a32" : node.role === "catalyst" ? "#d97736" : "#2c5e43";
+            const pulseClass = node.role === "origin" ? "pulse-origin" : node.role === "catalyst" ? "pulse-catalyst" : "pulse-scale";
+            return `
+            <g class="active-node map-node" data-city="${node.city}" data-role="${node.role}" transform="translate(${node.x}, ${node.y})">
+              <!-- Pulsing Ring -->
+              <circle cx="0" cy="0" r="8" fill="none" stroke-width="2" class="${pulseClass}" />
+              <!-- Solid Center Pin -->
+              <circle cx="0" cy="0" r="6" fill="${roleColor}" stroke="#fff" stroke-width="1.5" />
+              <!-- Badge Container -->
+              <g transform="translate(10, -10)">
+                <rect x="-2" y="-10" width="${node.city.length * 7 + 34}" height="20" class="node-pin-bg" />
+                <text x="4" y="0" class="node-label-text">${node.city}</text>
+                <text x="4" y="8" class="node-role-badge" fill="${roleColor}">● ${node.roleLabel}</text>
+              </g>
+            </g>
+          `;
+          })
+          .join("")}
+      </g>
+    </svg>
+  `;
+
+  wrap.innerHTML = svg;
+
+  wrap.querySelectorAll(".map-node").forEach((nodeEl) => {
+    nodeEl.addEventListener("click", () => {
+      const cityName = nodeEl.dataset.city;
+      handleCityNodeClick(cityName);
+    });
+  });
+}
+
+function renderRouteDossier(activeRoute) {
+  const dossier = document.querySelector("#route-dossier");
+  if (!dossier) return;
+
+  const sound = catalog.find((s) => s.id === activeRoute.soundId) || catalog[0];
+
+  dossier.innerHTML = `
+    <div class="dossier-top">
+      <div>
+        <span class="dossier-meta-badge">MIGRATION TELEMETRY</span>
+        <h3 class="dossier-title">${activeRoute.title}</h3>
+        <p class="dossier-subtitle">${activeRoute.subtitle}</p>
+      </div>
+      <div class="dossier-velocity-box">
+        <span class="dossier-velocity-num">${activeRoute.velocityDays}d</span>
+        <span class="dossier-velocity-lbl">Niche to FYP</span>
+      </div>
+    </div>
+
+    <!-- 3-Node Progression Corridor -->
+    <div class="corridor-chain">
+      <p class="corridor-chain-title">Corridor Progression Path</p>
+      ${activeRoute.nodes
+        .map(
+          (node, idx) => `
+        <div class="corridor-step">
+          <div class="step-marker ${node.role}">${idx + 1}</div>
+          <div class="step-info">
+            <div class="step-info-top">
+              <span class="step-city">${node.city}</span>
+              <span class="step-role-tag">${node.roleLabel}</span>
+            </div>
+            <p class="step-desc">${node.desc}</p>
+          </div>
+        </div>
+      `
+        )
+        .join("")}
+    </div>
+
+    <!-- Field Dispatch Note -->
+    <div class="dossier-field-notes">
+      <p class="field-notes-title">Cultural Analyst Field Note</p>
+      <p class="field-notes-text">"${activeRoute.fieldNotes}"</p>
+    </div>
+
+    <!-- Featured Curated Sound Card -->
+    <div class="dossier-sound-preview">
+      <div class="sound-preview-top">
+        <span>FEATURED CORRIDOR SOUND</span>
+        <span>${sound.stage}</span>
+      </div>
+      <div class="sound-preview-track">
+        <h4>${sound.title}</h4>
+        <p>${sound.artist} · ${sound.scene}</p>
+      </div>
+      <div class="sound-preview-hook">
+        <span>10-15s Hook:</span>
+        <strong>${sound.hook}</strong>
+      </div>
+      <div class="sound-preview-actions">
+        <button class="preview-view-story-btn" id="dossier-story-btn">View Sound Story ↗</button>
+        <button class="preview-copy-btn" id="dossier-copy-btn">📋 Copy Blueprint</button>
+      </div>
+    </div>
+  `;
+
+  const storyBtn = dossier.querySelector("#dossier-story-btn");
+  const copyBtn = dossier.querySelector("#dossier-copy-btn");
+
+  if (storyBtn) {
+    storyBtn.addEventListener("click", () => openSoundStory(sound));
+  }
+  if (copyBtn) {
+    copyBtn.addEventListener("click", (e) => copyReelBlueprint(sound, e.currentTarget));
+  }
+}
+
+function renderRoutesSection(routeId) {
+  if (routeId) currentRouteId = routeId;
+  const activeRoute = soundRoutes.find((r) => r.id === currentRouteId) || soundRoutes[0];
+
+  const nav = document.querySelector("#routes-corridor-nav");
+  if (nav) {
+    nav.innerHTML = soundRoutes
+      .map(
+        (r) => `
+      <button class="corridor-pill ${r.id === activeRoute.id ? "active" : ""}" data-route="${r.id}">
+        <span class="pill-dot"></span>
+        ${r.title}
+      </button>
+    `
+      )
+      .join("");
+
+    nav.querySelectorAll(".corridor-pill").forEach((pill) => {
+      pill.addEventListener("click", () => {
+        renderRoutesSection(pill.dataset.route);
+      });
+    });
+  }
+
+  const corridorNameEl = document.querySelector("#map-active-corridor-name");
+  if (corridorNameEl) corridorNameEl.textContent = activeRoute.title;
+
+  renderSvgMap(activeRoute);
+  renderRouteDossier(activeRoute);
+}
+
 // Global escape key handler
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
@@ -2080,3 +2478,5 @@ renderTodayFeed("vol-01");
 renderMatchCards();
 renderVault();
 renderSceneExplorer("all");
+renderRoutesSection("majha-drill");
+

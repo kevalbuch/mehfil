@@ -1504,6 +1504,28 @@ footer a {
   margin-bottom: 14px;
 }
 
+.route-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.route-map-jump-btn {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font: 600 10px "DM Mono", monospace;
+  padding: 3px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.route-map-jump-btn:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
 .route-badge {
   font: 10px "DM Mono", monospace;
   text-transform: uppercase;
@@ -2743,5 +2765,627 @@ footer a {
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================================================
+   PHASE 3: SOUND ROUTES & CARTOGRAPHIC INTELLIGENCE
+   ========================================================================== */
+
+.routes-section {
+  padding: 80px max(5vw, calc((100vw - 1400px) / 2 + 5vw));
+  background: #fbf7ee;
+  border-top: 1.5px solid var(--line-strong);
+  border-bottom: 1.5px solid var(--line-strong);
+}
+
+.routes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 30px;
+  gap: 30px;
+}
+
+.routes-header-text {
+  max-width: 680px;
+}
+
+.routes-header h2 {
+  font: 600 clamp(32px, 4.5vw, 50px) "Playfair Display", serif;
+  letter-spacing: -1.2px;
+  line-height: 1.08;
+  margin: 6px 0 14px;
+}
+
+.routes-header h2 em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.routes-desc {
+  font-size: 15px;
+  color: #4a453f;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.routes-stats-strip {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.route-stat-item {
+  background: var(--paper-card);
+  border: 1.5px solid var(--line-strong);
+  box-shadow: 3px 3px 0 var(--line-strong);
+  padding: 12px 18px;
+  min-width: 105px;
+  text-align: center;
+}
+
+.route-stat-val {
+  display: block;
+  font: 700 24px "Playfair Display", serif;
+  color: var(--accent);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.route-stat-lbl {
+  display: block;
+  font: 10px "DM Mono", monospace;
+  text-transform: uppercase;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+}
+
+/* Corridor Switcher Navigation */
+.routes-corridor-nav {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  margin-bottom: 24px;
+  scrollbar-width: thin;
+}
+
+.corridor-pill {
+  background: var(--paper-card);
+  border: 1.5px solid var(--line-strong);
+  box-shadow: 3px 3px 0 var(--line-strong);
+  padding: 10px 16px;
+  font: 600 12px "DM Mono", monospace;
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 2px;
+}
+
+.corridor-pill:hover {
+  transform: translateY(-2px);
+  box-shadow: 4px 4px 0 var(--line-strong);
+  border-color: var(--accent);
+}
+
+.corridor-pill.active {
+  background: var(--line-strong);
+  color: var(--paper);
+  box-shadow: 4px 4px 0 var(--accent);
+  border-color: var(--line-strong);
+}
+
+.corridor-pill .pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: inline-block;
+}
+
+.corridor-pill.active .pill-dot {
+  background: #ffaa5b;
+  box-shadow: 0 0 6px #ffaa5b;
+}
+
+/* Layout Split */
+.routes-layout {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 24px;
+  align-items: start;
+}
+
+/* Cartographic Map Card */
+.routes-map-card {
+  background: #fbf7ee;
+  border: 2px solid var(--line-strong);
+  box-shadow: 6px 6px 0 var(--line-strong);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.map-card-header {
+  padding: 16px 20px;
+  border-bottom: 1.5px solid var(--line-strong);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--paper-card);
+}
+
+.map-title-group .map-edition-tag {
+  font: 10px "DM Mono", monospace;
+  color: var(--muted);
+  letter-spacing: 0.8px;
+  display: block;
+}
+
+.map-title-group h3 {
+  font: 600 20px "Playfair Display", serif;
+  margin: 2px 0 0;
+}
+
+.map-legend {
+  display: flex;
+  gap: 14px;
+  font: 10px "DM Mono", monospace;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  border: 1px solid var(--line-strong);
+}
+
+.legend-dot.origin { background: #c85a32; }
+.legend-dot.catalyst { background: #d97736; }
+.legend-dot.scale { background: #2c5e43; }
+
+/* SVG Map Wrap */
+.map-svg-wrap {
+  width: 100%;
+  aspect-ratio: 650 / 720;
+  max-height: 560px;
+  position: relative;
+  background: radial-gradient(circle at 45% 45%, #faf5ea 0%, #f4ede0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.map-svg-wrap svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* SVG Elements Styling */
+.india-landmass {
+  fill: #efe8dc;
+  stroke: #8a7e6b;
+  stroke-width: 1.2px;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 2px 5px rgba(32, 30, 28, 0.05));
+  transition: all 0.3s;
+}
+
+.grid-line {
+  stroke: #dfd7c5;
+  stroke-dasharray: 2, 5;
+  stroke-width: 0.8px;
+}
+
+.grid-label {
+  font: 8px "DM Mono", monospace;
+  fill: #a89f8c;
+}
+
+.compass-rose text {
+  font: 8px "DM Mono", monospace;
+  fill: #8a7e6b;
+  font-weight: 600;
+}
+
+/* Trajectory Lines */
+.route-path-glow {
+  stroke: rgba(200, 90, 50, 0.25);
+  stroke-width: 8px;
+  fill: none;
+  stroke-linecap: round;
+}
+
+.route-path-main {
+  stroke: var(--accent);
+  stroke-width: 2.5px;
+  fill: none;
+  stroke-linecap: round;
+}
+
+.route-travel-dash {
+  stroke: #fffaf0;
+  stroke-width: 1.6px;
+  fill: none;
+  stroke-dasharray: 6, 8;
+  animation: dashMove 2s linear infinite;
+}
+
+@keyframes dashMove {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+
+/* Map Nodes & Pins */
+.map-node {
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.map-node:hover {
+  transform: scale(1.18);
+}
+
+.node-pin-bg {
+  fill: #fff;
+  stroke: var(--line-strong);
+  stroke-width: 1px;
+  rx: 2;
+  ry: 2;
+}
+
+.node-label-text {
+  font: 600 9px "DM Mono", monospace;
+  fill: var(--ink);
+  letter-spacing: 0.2px;
+}
+
+.node-role-badge {
+  font: 500 7px "DM Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+/* Active Node Pulsing Rings */
+.pulse-origin {
+  animation: pulseOriginRing 2.2s infinite ease-out;
+  transform-origin: center;
+}
+
+.pulse-catalyst {
+  animation: pulseCatalystRing 2.2s infinite ease-out 0.4s;
+  transform-origin: center;
+}
+
+.pulse-scale {
+  animation: pulseScaleRing 2.2s infinite ease-out 0.8s;
+  transform-origin: center;
+}
+
+@keyframes pulseOriginRing {
+  0% { r: 5; opacity: 0.9; stroke: #c85a32; }
+  100% { r: 16; opacity: 0; stroke: #c85a32; }
+}
+
+@keyframes pulseCatalystRing {
+  0% { r: 5; opacity: 0.9; stroke: #d97736; }
+  100% { r: 16; opacity: 0; stroke: #d97736; }
+}
+
+@keyframes pulseScaleRing {
+  0% { r: 5; opacity: 0.9; stroke: #2c5e43; }
+  100% { r: 16; opacity: 0; stroke: #2c5e43; }
+}
+
+/* Passive Hub Pin */
+.passive-pin circle {
+  fill: #fff;
+  stroke: #8a7e6b;
+  stroke-width: 1.5px;
+}
+
+.passive-pin text {
+  font: 8px "DM Sans", sans-serif;
+  fill: #6e6556;
+}
+
+.passive-pin:hover circle {
+  fill: var(--accent);
+  stroke: var(--line-strong);
+}
+
+.passive-pin:hover text {
+  font-weight: 700;
+  fill: var(--ink);
+}
+
+.map-footer-note {
+  padding: 10px 18px;
+  border-top: 1.5px solid var(--line-strong);
+  background: var(--paper-card);
+  display: flex;
+  justify-content: space-between;
+  font: 10px "DM Mono", monospace;
+  color: var(--muted);
+}
+
+.map-scale-text {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Route Dossier Panel */
+.route-dossier {
+  background: var(--paper-card);
+  border: 2px solid var(--line-strong);
+  box-shadow: 6px 6px 0 var(--line-strong);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.dossier-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  border-bottom: 1.5px solid var(--line-strong);
+  padding-bottom: 14px;
+}
+
+.dossier-meta-badge {
+  display: inline-block;
+  background: var(--line-strong);
+  color: var(--paper);
+  font: 10px "DM Mono", monospace;
+  padding: 3px 7px;
+  border-radius: 2px;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.dossier-title {
+  font: 600 24px "Playfair Display", serif;
+  margin: 0 0 4px;
+  letter-spacing: -0.5px;
+  line-height: 1.15;
+}
+
+.dossier-subtitle {
+  font: italic 13px "Playfair Display", serif;
+  color: #555;
+  margin: 0;
+}
+
+.dossier-velocity-box {
+  background: #fbf7ee;
+  border: 1.5px solid var(--line-strong);
+  padding: 8px 12px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.dossier-velocity-num {
+  font: 700 20px "DM Mono", monospace;
+  color: var(--accent);
+  display: block;
+  line-height: 1;
+}
+
+.dossier-velocity-lbl {
+  font: 9px "DM Mono", monospace;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+/* Corridor Chain 3-Nodes */
+.corridor-chain {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.corridor-chain-title {
+  font: 10px "DM Mono", monospace;
+  text-transform: uppercase;
+  color: var(--muted);
+  letter-spacing: 0.6px;
+  margin: 0;
+}
+
+.corridor-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  position: relative;
+}
+
+.corridor-step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 24px;
+  left: 11px;
+  width: 2px;
+  height: calc(100% - 10px);
+  background: var(--line-strong);
+}
+
+.step-marker {
+  width: 24px;
+  height: 24px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 10px "DM Mono", monospace;
+  background: #fff;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.step-marker.origin { background: #c85a32; color: #fff; }
+.step-marker.catalyst { background: #d97736; color: #fff; }
+.step-marker.scale { background: #2c5e43; color: #fff; }
+
+.step-info {
+  flex-grow: 1;
+  background: #fbf7ee;
+  border: 1px solid var(--line);
+  padding: 8px 12px;
+  border-radius: 2px;
+}
+
+.step-info-top {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.step-city {
+  font: 600 13px "DM Sans", sans-serif;
+  color: var(--ink);
+}
+
+.step-role-tag {
+  font: 10px "DM Mono", monospace;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.step-desc {
+  font-size: 11px;
+  color: #666;
+  margin: 0;
+  line-height: 1.35;
+}
+
+/* Field Notes Box */
+.dossier-field-notes {
+  background: #f7f2e6;
+  border-left: 3px solid var(--accent);
+  padding: 12px 14px;
+}
+
+.field-notes-title {
+  font: 10px "DM Mono", monospace;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 4px;
+  letter-spacing: 0.5px;
+}
+
+.field-notes-text {
+  font: italic 13px "Playfair Display", serif;
+  color: #38342e;
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* Dossier Featured Sound Card */
+.dossier-sound-preview {
+  border: 1.5px solid var(--line-strong);
+  box-shadow: 3px 3px 0 var(--line-strong);
+  background: #fff;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sound-preview-top {
+  display: flex;
+  justify-content: space-between;
+  font: 10px "DM Mono", monospace;
+  color: var(--muted);
+}
+
+.sound-preview-track h4 {
+  font: 600 18px "Playfair Display", serif;
+  margin: 0 0 2px;
+  letter-spacing: -0.3px;
+}
+
+.sound-preview-track p {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.sound-preview-hook {
+  font: 11px "DM Mono", monospace;
+  display: flex;
+  justify-content: space-between;
+  background: #fbf7ee;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+}
+
+.sound-preview-hook strong {
+  color: var(--accent);
+}
+
+.sound-preview-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 6px;
+}
+
+.preview-view-story-btn, .preview-copy-btn {
+  flex: 1;
+  padding: 7px 10px;
+  font: 600 11px "DM Mono", monospace;
+  border: 1.5px solid var(--line-strong);
+  cursor: pointer;
+  background: transparent;
+  transition: all 0.18s;
+  text-align: center;
+}
+
+.preview-view-story-btn {
+  background: var(--line-strong);
+  color: var(--paper);
+}
+
+.preview-view-story-btn:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.preview-copy-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Responsive */
+@media (max-width: 960px) {
+  .routes-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .routes-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 
 
