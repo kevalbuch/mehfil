@@ -380,7 +380,8 @@
               <button class="copy-blueprint-btn" type="button" aria-label="Copy Reel Blueprint">📋 Blueprint</button>
               <div class="card-links">
                 <span class="view-hint">Story ↗</span>
-                <a class="open-link" href="#" aria-label="Open sound on Spotify">Spotify ↗</a>
+                <a class="ig-link" href="#" target="_blank" rel="noopener noreferrer" title="Open on Instagram Reels Audio">IG ↗</a>
+                <a class="open-link" href="#" target="_blank" rel="noopener noreferrer" title="Listen on Spotify">Spotify ↗</a>
               </div>
             </div>
           </div>
@@ -526,6 +527,35 @@
         </form>
       </div>
     </div>
+
+    <!-- Persistent Sticky Bottom Mini-Player (Task A1) -->
+    <aside id="mini-player-bar" class="mini-player-bar hidden" aria-label="Audio Player">
+      <div class="mini-player-inner">
+        <div class="mini-player-track">
+          <div class="mini-player-vinyl-orb" id="mini-player-orb"></div>
+          <div class="mini-player-meta">
+            <strong id="mini-player-title">Track Title</strong>
+            <p id="mini-player-artist">Artist Name · Scene</p>
+          </div>
+        </div>
+
+        <div class="mini-player-controls">
+          <button type="button" id="mini-player-play-btn" class="mini-player-btn play-btn" aria-label="Toggle Playback">■</button>
+          <div class="mini-player-waveform-wrap">
+            <canvas id="mini-player-waveform" width="220" height="28"></canvas>
+          </div>
+          <span class="mini-player-timer" id="mini-player-timer">0:15</span>
+        </div>
+
+        <div class="mini-player-actions">
+          <button type="button" id="mini-player-mute-btn" class="mini-player-btn icon-btn" aria-label="Mute Audio" title="Mute / Unmute">🔊</button>
+          <button type="button" id="mini-player-save-btn" class="mini-player-btn icon-btn" aria-label="Save Sound to Vault" title="Save to Vault">＋</button>
+          <a id="mini-player-ig-btn" class="mini-player-link ig-link" href="#" target="_blank" rel="noopener noreferrer" title="Open on Instagram Reels Audio">IG ↗</a>
+          <a id="mini-player-spotify-btn" class="mini-player-link sp-link" href="#" target="_blank" rel="noopener noreferrer" title="Listen on Spotify">Spotify ↗</a>
+          <button type="button" id="mini-player-close-btn" class="mini-player-btn close-btn" aria-label="Close Mini Player" title="Stop & Close">×</button>
+        </div>
+      </div>
+    </aside>
 
     <!-- Floating Toast Notification -->
     <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>

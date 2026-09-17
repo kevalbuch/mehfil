@@ -1483,6 +1483,7 @@ class ProceduralAudioEngine {
     this.activeIntervals = [];
     this.isPlaying = false;
     this.currentSoundId = null;
+    this.currentSound = null;
     this.analyser = null;
     this.timerInterval = null;
     this.remainingSeconds = 15;
@@ -1491,7 +1492,11 @@ class ProceduralAudioEngine {
     this.animationFrameId = null;
     this.audioElement = null;
     this.mediaSource = null;
+    this.masterGain = null;
     this.animTime = 0;
+    this.activeCanvases = new Set();
+    this.isMuted = false;
+    this.miniPlayerInitialized = false;
   }
 
   init() {
@@ -1504,6 +1509,76 @@ class ProceduralAudioEngine {
     if (this.ctx && this.ctx.state === "suspended") {
       this.ctx.resume();
     }
+  }
+
+  setupMiniPlayer() {
+    if (this.miniPlayerInitialized || typeof document === "undefined") return;
+    this.miniPlayerInitialized = true;
+
+    const playBtn = document.querySelector("#mini-player-play-btn");
+    const muteBtn = document.querySelector("#mini-player-mute-btn");
+    const saveBtn = document.querySelector("#mini-player-save-btn");
+    const closeBtn = document.querySelector("#mini-player-close-btn");
+    const orb = document.querySelector("#mini-player-orb");
+
+    if (playBtn) {
+      playBtn.addEventListener("click", () => {
+        if (this.isPlaying) {
+          this.stop();
+        } else if (this.currentSound) {
+          this.playHookCue(this.currentSound);
+        }
+      });
+    }
+
+    if (muteBtn) {
+      muteBtn.addEventListener("click", () => {
+        this.isMuted = !this.isMuted;
+        muteBtn.textContent = this.isMuted ? "🔇" : "🔊";
+        muteBtn.title = this.isMuted ? "Unmute Audio" : "Mute Audio";
+        if (this.audioElement) {
+          this.audioElement.muted = this.isMuted;
+        }
+        if (this.masterGain && this.ctx) {
+          this.masterGain.gain.setValueAtTime(this.isMuted ? 0.0001 : 0.28, this.ctx.currentTime);
+        }
+      });
+    }
+
+    if (saveBtn) {
+      saveBtn.addEventListener("click", () => {
+        if (!this.currentSound) return;
+        toggleSaveSound(this.currentSound.id, activeBoard);
+        this.updateMiniPlayerSaveState();
+      });
+    }
+
+    if (closeBtn) {
+      closeBtn.addEventListener("click", () => {
+        this.stop();
+        const bar = document.querySelector("#mini-player-bar");
+        if (bar) bar.classList.add("hidden");
+        document.body.classList.remove("has-mini-player");
+      });
+    }
+
+    if (orb) {
+      orb.addEventListener("click", () => {
+        if (this.currentSound) {
+          openSoundStory(this.currentSound);
+        }
+      });
+    }
+  }
+
+  updateMiniPlayerSaveState() {
+    const saveBtn = document.querySelector("#mini-player-save-btn");
+    if (!saveBtn || !this.currentSound) return;
+    const vault = getSavedVault();
+    const isSaved = (vault[activeBoard] || []).includes(this.currentSound.id);
+    saveBtn.textContent = isSaved ? "✓" : "＋";
+    saveBtn.classList.toggle("is-saved", isSaved);
+    saveBtn.title = isSaved ? `Saved in "${activeBoard}"` : `Save to "${activeBoard}"`;
   }
 
   determineArchetype(sound) {
@@ -1563,10 +1638,23 @@ class ProceduralAudioEngine {
       });
     }
     this.activeNodes = [];
+    this.masterGain = null;
     const prevId = this.currentSoundId;
     this.isPlaying = false;
     this.currentSoundId = null;
     this.remainingSeconds = 15;
+
+    // Reset Mini Player play button
+    const miniPlayBtn = document.querySelector("#mini-player-play-btn");
+    if (miniPlayBtn) {
+      miniPlayBtn.textContent = "▶";
+      miniPlayBtn.setAttribute("aria-label", "Play Audio");
+    }
+
+    // Reset active canvases to idle state
+    this.activeCanvases.forEach((canvas) => {
+      this.drawIdleWaveform(canvas);
+    });
 
     if (this.onStop && prevId) {
       this.onStop(prevId);
@@ -1574,14 +1662,46 @@ class ProceduralAudioEngine {
   }
 
   playHookCue(sound, onTick, onStop) {
+    this.setupMiniPlayer();
     this.stop();
     this.init();
 
     this.isPlaying = true;
     this.currentSoundId = sound.id;
+    this.currentSound = sound;
     this.remainingSeconds = 15;
     this.onTick = onTick;
     this.onStop = onStop;
+
+    // Update and display bottom mini-player
+    const miniPlayer = document.querySelector("#mini-player-bar");
+    if (miniPlayer) {
+      miniPlayer.classList.remove("hidden");
+      document.body.classList.add("has-mini-player");
+      const titleEl = document.querySelector("#mini-player-title");
+      const artistEl = document.querySelector("#mini-player-artist");
+      const playBtn = document.querySelector("#mini-player-play-btn");
+      const timerEl = document.querySelector("#mini-player-timer");
+      const igBtn = document.querySelector("#mini-player-ig-btn");
+      const spBtn = document.querySelector("#mini-player-spotify-btn");
+      const miniWaveform = document.querySelector("#mini-player-waveform");
+
+      if (titleEl) titleEl.textContent = sound.title;
+      if (artistEl) artistEl.textContent = `${sound.artist} · ${sound.scene || sound.language || "Indie"}`;
+      if (playBtn) {
+        playBtn.textContent = "■";
+        playBtn.setAttribute("aria-label", "Pause Audio");
+      }
+      if (timerEl) timerEl.textContent = "0:15";
+      if (igBtn) igBtn.href = `https://www.instagram.com/reels/audio/?query=${encodeURIComponent(sound.title + " " + sound.artist)}`;
+      if (spBtn) spBtn.href = sound.outboundUrl || `https://open.spotify.com/search/${encodeURIComponent(sound.title + " " + sound.artist)}`;
+
+      this.updateMiniPlayerSaveState();
+
+      if (miniWaveform) {
+        this.activeCanvases.add(miniWaveform);
+      }
+    }
 
     const audioUrl = sound.previewAudioUrl || REAL_AUDIO_PREVIEWS[sound.id];
 
@@ -1591,6 +1711,7 @@ class ProceduralAudioEngine {
         audio.src = audioUrl;
         audio.preload = "auto";
         audio.volume = 0.95;
+        audio.muted = this.isMuted;
         this.audioElement = audio;
 
         const playPromise = audio.play();
@@ -1598,6 +1719,7 @@ class ProceduralAudioEngine {
           playPromise
             .then(() => {
               this.startTimer();
+              this.startWaveformLoop();
             })
             .catch((err) => {
               console.warn("Direct stream play blocked, falling back to harmonic synth:", err);
@@ -1628,15 +1750,17 @@ class ProceduralAudioEngine {
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
     const masterGain = this.ctx.createGain();
+    const targetGain = this.isMuted ? 0.0001 : 0.28;
     masterGain.gain.setValueAtTime(0.001, now);
-    masterGain.gain.exponentialRampToValueAtTime(0.28, now + 0.3);
-    masterGain.gain.setValueAtTime(0.28, now + 14.0);
+    masterGain.gain.exponentialRampToValueAtTime(targetGain, now + 0.3);
+    masterGain.gain.setValueAtTime(targetGain, now + 14.0);
     masterGain.gain.exponentialRampToValueAtTime(0.0001, now + 15.0);
 
     this.analyser = this.ctx.createAnalyser();
     this.analyser.fftSize = 64;
     masterGain.connect(this.analyser);
     this.analyser.connect(this.ctx.destination);
+    this.masterGain = masterGain;
     this.activeNodes.push(masterGain, this.analyser);
 
     const type = this.determineArchetype(sound);
@@ -1651,13 +1775,21 @@ class ProceduralAudioEngine {
     }
 
     this.startTimer();
+    this.startWaveformLoop();
   }
 
   startTimer() {
-    if (this.onTick) this.onTick(this.remainingSeconds);
+    const updateDisplays = (sec) => {
+      const formatted = `0:${String(Math.max(0, sec)).padStart(2, "0")}`;
+      if (this.onTick) this.onTick(sec);
+      const miniTimer = document.querySelector("#mini-player-timer");
+      if (miniTimer) miniTimer.textContent = formatted;
+    };
+
+    updateDisplays(this.remainingSeconds);
     this.timerInterval = setInterval(() => {
       this.remainingSeconds--;
-      if (this.onTick) this.onTick(this.remainingSeconds);
+      updateDisplays(this.remainingSeconds);
       if (this.remainingSeconds <= 0) {
         this.stop();
       }
@@ -1918,24 +2050,49 @@ class ProceduralAudioEngine {
     this.activeIntervals.push(chimeInterval);
   }
 
-  drawWaveform(canvas) {
+  drawIdleWaveform(canvas) {
     if (!canvas || typeof canvas.getContext !== "function") return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     const width = canvas.width;
     const height = canvas.height;
+    ctx.clearRect(0, 0, width, height);
+    ctx.beginPath();
+    ctx.moveTo(0, height / 2);
+    ctx.lineTo(width, height / 2);
+    ctx.strokeStyle = canvas.id === "mini-player-waveform" ? "rgba(255, 255, 255, 0.25)" : "#ded6c7";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  attachWaveformCanvas(canvas) {
+    if (!canvas) return;
+    this.activeCanvases.add(canvas);
+    if (this.isPlaying && !this.animationFrameId) {
+      this.startWaveformLoop();
+    } else if (!this.isPlaying) {
+      this.drawIdleWaveform(canvas);
+    }
+  }
+
+  detachWaveformCanvas(canvas) {
+    if (!canvas) return;
+    this.activeCanvases.delete(canvas);
+  }
+
+  startWaveformLoop() {
+    if (this.animationFrameId && typeof cancelAnimationFrame !== "undefined") {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+
     const bufferLength = this.analyser ? this.analyser.frequencyBinCount : 32;
     const dataArray = new Uint8Array(bufferLength);
+    const freqData = new Uint8Array(bufferLength);
 
     const render = () => {
       if (!this.isPlaying) {
-        ctx.clearRect(0, 0, width, height);
-        ctx.beginPath();
-        ctx.moveTo(0, height / 2);
-        ctx.lineTo(width, height / 2);
-        ctx.strokeStyle = "#ded6c7";
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
+        this.activeCanvases.forEach((c) => this.drawIdleWaveform(c));
         return;
       }
 
@@ -1947,6 +2104,7 @@ class ProceduralAudioEngine {
       if (this.analyser) {
         try {
           this.analyser.getByteTimeDomainData(dataArray);
+          this.analyser.getByteFrequencyData(freqData);
           for (let k = 0; k < bufferLength; k++) {
             if (Math.abs(dataArray[k] - 128) > 2) {
               hasSignal = true;
@@ -1956,53 +2114,65 @@ class ProceduralAudioEngine {
         } catch (e) {}
       }
 
-      ctx.clearRect(0, 0, width, height);
-
-      ctx.fillStyle = "rgba(251, 247, 238, 0.45)";
-      ctx.fillRect(0, 0, width, height);
-
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = "#c85a32";
-      ctx.beginPath();
-
       this.animTime = (this.animTime || 0) + 0.15;
-      const sliceWidth = width / bufferLength;
-      let x = 0;
 
-      for (let i = 0; i < bufferLength; i++) {
-        let v = hasSignal 
-          ? dataArray[i] / 128.0 
-          : 1 + Math.sin(i * 0.25 + this.animTime) * 0.22 + Math.cos(i * 0.5 - this.animTime * 0.7) * 0.12;
-        const y = (v * height) / 2;
+      this.activeCanvases.forEach((canvas) => {
+        if (!canvas || typeof canvas.getContext !== "function") return;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        const width = canvas.width;
+        const height = canvas.height;
+        const isDark = canvas.id === "mini-player-waveform";
 
-        if (i === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
+        ctx.clearRect(0, 0, width, height);
+
+        // Background
+        ctx.fillStyle = isDark ? "rgba(0, 0, 0, 0.25)" : "rgba(251, 247, 238, 0.45)";
+        ctx.fillRect(0, 0, width, height);
+
+        // Waveform stroke
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = isDark ? "#ff7660" : "#c85a32";
+        ctx.beginPath();
+
+        const sliceWidth = width / bufferLength;
+        let x = 0;
+
+        for (let i = 0; i < bufferLength; i++) {
+          let v = hasSignal
+            ? dataArray[i] / 128.0
+            : 1 + Math.sin(i * 0.25 + this.animTime) * 0.22 + Math.cos(i * 0.5 - this.animTime * 0.7) * 0.12;
+          const y = (v * height) / 2;
+
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+          x += sliceWidth;
         }
-        x += sliceWidth;
-      }
 
-      ctx.lineTo(width, height / 2);
-      ctx.stroke();
+        ctx.lineTo(width, height / 2);
+        ctx.stroke();
 
-      const freqData = new Uint8Array(bufferLength);
-      if (hasSignal && this.analyser) {
-        try {
-          this.analyser.getByteFrequencyData(freqData);
-        } catch (e) {}
-      }
-      const barWidth = width / 14 - 2;
-      for (let j = 0; j < 14; j++) {
-        const barHeight = hasSignal 
-          ? (freqData[j * 2] / 255) * (height * 0.7)
-          : (Math.sin(j * 0.75 + this.animTime * 2) * 0.45 + 0.5) * (height * 0.65) + 3;
-        ctx.fillStyle = "rgba(217, 119, 54, 0.32)";
-        ctx.fillRect(j * (barWidth + 2), height - barHeight, barWidth, barHeight);
-      }
+        // Frequency bars
+        const numBars = isDark ? 16 : 14;
+        const barWidth = width / numBars - 2;
+        for (let j = 0; j < numBars; j++) {
+          const barHeight = hasSignal
+            ? (freqData[j * 2] / 255) * (height * 0.7)
+            : (Math.sin(j * 0.75 + this.animTime * 2) * 0.45 + 0.5) * (height * 0.65) + 3;
+          ctx.fillStyle = isDark ? "rgba(255, 118, 96, 0.38)" : "rgba(217, 119, 54, 0.32)";
+          ctx.fillRect(j * (barWidth + 2), height - barHeight, barWidth, barHeight);
+        }
+      });
     };
 
     render();
+  }
+
+  drawWaveform(canvas) {
+    this.attachWaveformCanvas(canvas);
   }
 }
 
@@ -2015,12 +2185,12 @@ function toggleHookCuePlay(sound, btnEl, cardRoot) {
   }
 
   // Clear any existing playing states
-  document.querySelectorAll(".sound-card.is-playing, .today-card.is-playing, .scene-track-card.is-playing").forEach((el) => {
+  document.querySelectorAll(".sound-card.is-playing, .today-card.is-playing, .scene-track-card.is-playing, .search-row.is-playing").forEach((el) => {
     el.classList.remove("is-playing");
     const eq = el.querySelector(".cue-equalizer");
     if (eq) eq.remove();
   });
-  document.querySelectorAll(".card-cue-btn, .today-cue-btn, .scene-cue-btn, .preview-cue-btn, #radar-cue-action-btn").forEach((btn) => {
+  document.querySelectorAll(".card-cue-btn, .today-cue-btn, .scene-cue-btn, .preview-cue-btn, .search-cue-btn, #radar-cue-action-btn").forEach((btn) => {
     btn.classList.remove("is-playing");
     btn.textContent = "▶ Cue";
   });
@@ -2044,7 +2214,7 @@ function toggleHookCuePlay(sound, btnEl, cardRoot) {
   audioEngine.playHookCue(
     sound,
     (seconds) => {
-      const secFormatted = `0:${String(seconds).padStart(2, "0")}`;
+      const secFormatted = `0:${String(Math.max(0, seconds)).padStart(2, "0")}`;
       if (btnEl) btnEl.textContent = `■ ${secFormatted}`;
       const timerEl = document.querySelector("#modal-cue-timer");
       if (timerEl) timerEl.textContent = secFormatted;
@@ -2086,6 +2256,9 @@ function updateCardSaveStates() {
       saveBtn.setAttribute("aria-label", isSaved ? `Remove from ${activeBoard}` : `Save to ${activeBoard}`);
     }
   });
+  if (typeof audioEngine !== "undefined" && audioEngine.updateMiniPlayerSaveState) {
+    audioEngine.updateMiniPlayerSaveState();
+  }
 }
 
 function renderSoundCardElements(sounds) {
@@ -2171,15 +2344,24 @@ function renderSoundCardElements(sounds) {
       toggleSaveSound(sound.id, activeBoard);
     });
 
-    // Outbound link
+    // Outbound links (Instagram & Spotify)
+    const igLink = card.querySelector(".ig-link");
+    if (igLink) {
+      igLink.href = `https://www.instagram.com/reels/audio/?query=${encodeURIComponent(sound.title + " " + sound.artist)}`;
+      igLink.target = "_blank";
+      igLink.rel = "noopener noreferrer";
+    }
+
     const openLink = card.querySelector(".open-link");
-    openLink.href = sound.outboundUrl || `https://open.spotify.com/search/${encodeURIComponent(sound.title + " " + sound.artist)}`;
-    openLink.target = "_blank";
-    openLink.rel = "noopener noreferrer";
+    if (openLink) {
+      openLink.href = sound.outboundUrl || `https://open.spotify.com/search/${encodeURIComponent(sound.title + " " + sound.artist)}`;
+      openLink.target = "_blank";
+      openLink.rel = "noopener noreferrer";
+    }
 
     // Click card to open modal story
     root.addEventListener("click", (e) => {
-      if (e.target.closest(".save") || e.target.closest(".open-link") || e.target.closest(".copy-blueprint-btn") || e.target.closest(".card-cue-btn") || e.target.closest(".orb")) return;
+      if (e.target.closest(".save") || e.target.closest(".open-link") || e.target.closest(".ig-link") || e.target.closest(".copy-blueprint-btn") || e.target.closest(".card-cue-btn") || e.target.closest(".orb")) return;
       openSoundStory(sound);
     });
 
@@ -2310,7 +2492,8 @@ function renderTodayFeed(editionId = currentEdition) {
         <div class="today-actions">
           <button class="today-cue-btn" data-sound="${sound.id}">▶ Cue</button>
           <button class="view-story-btn" data-sound="${sound.id}">View story ↗</button>
-          <a class="listen-outbound" href="${sound.outboundUrl}" target="_blank" rel="noopener noreferrer">Listen on Spotify ↗</a>
+          <a class="ig-link" href="https://www.instagram.com/reels/audio/?query=${encodeURIComponent(sound.title + ' ' + sound.artist)}" target="_blank" rel="noopener noreferrer" title="Open on Instagram Reels Audio">IG ↗</a>
+          <a class="listen-outbound" href="${sound.outboundUrl || `https://open.spotify.com/search/${encodeURIComponent(sound.title + ' ' + sound.artist)}`}" target="_blank" rel="noopener noreferrer" title="Listen on Spotify">Spotify ↗</a>
         </div>
       </div>
     `;
@@ -2452,7 +2635,8 @@ function openSoundStory(sound) {
         <p class="twins-text">${twinBadges}</p>
       </div>
       <div class="story-actions">
-        <a class="listen-link" href="${sound.outboundUrl}" target="_blank" rel="noopener noreferrer">Listen on Spotify ↗</a>
+        <a class="ig-link" href="https://www.instagram.com/reels/audio/?query=${encodeURIComponent(sound.title + ' ' + sound.artist)}" target="_blank" rel="noopener noreferrer">Instagram Reel Audio ↗</a>
+        <a class="listen-link" href="${sound.outboundUrl || `https://open.spotify.com/search/${encodeURIComponent(sound.title + ' ' + sound.artist)}`}" target="_blank" rel="noopener noreferrer">Listen on Spotify ↗</a>
         <button class="save-modal-btn" id="modal-save-btn">Save to "${activeBoard}"</button>
       </div>
       <p class="rights-disclaimer">Curated editorial layer. Mehfil respects music rights and connects you directly to official streaming platforms.</p>
@@ -2550,7 +2734,10 @@ function openSoundStory(sound) {
 
 function closeSoundStory() {
   if (!modalOverlay) return;
-  if (typeof audioEngine !== "undefined") audioEngine.stop();
+  const modalWaveform = document.querySelector("#modal-cue-waveform");
+  if (modalWaveform && typeof audioEngine !== "undefined") {
+    audioEngine.detachWaveformCanvas(modalWaveform);
+  }
   modalOverlay.classList.add("hidden");
   document.body.style.overflow = "";
 }
@@ -2664,41 +2851,93 @@ function renderVault() {
 }
 
 // 10. Search ("Catch the Sound" - Product Brief Section 4.B)
-function searchSounds(query) {
+let currentSearchSeq = 0;
+
+async function searchSounds(query) {
   if (!searchResults) return;
-  const terms = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  const trimmed = (query || "").trim();
+  const terms = trimmed.toLowerCase().split(/\s+/).filter(Boolean);
 
   if (!terms.length) {
-    searchResults.innerHTML = '<p class="search-empty">Try a mood, artist, language or use case.</p>';
+    searchResults.innerHTML = '<p class="search-empty">Try a mood, artist, language or use case (e.g. "gym", "punjabi drill", "wedding").</p>';
     return;
   }
 
-  const matches = catalog.filter((sound) => {
+  const thisSeq = ++currentSearchSeq;
+
+  // 1. Static Catalog search
+  let matches = catalog.filter((sound) => {
     const haystack = `${sound.title} ${sound.artist} ${sound.language} ${sound.scene} ${sound.stage} ${sound.best} ${sound.idea} ${sound.energy} ${(sound.soundTwins || []).join(" ")}`.toLowerCase();
     return terms.every((t) => haystack.includes(t));
   });
 
+  // 2. Hybrid Dynamic Search: if matches < 3, check cached dynamic tracks
+  if (matches.length < 3 && typeof dynamicSoundEngine !== "undefined") {
+    const dynamicCached = (dynamicSoundEngine.cachedTracks || []).filter((sound) => {
+      const haystack = `${sound.title} ${sound.artist} ${sound.language} ${sound.scene} ${sound.stage} ${sound.best} ${sound.idea} ${sound.energy}`.toLowerCase();
+      return terms.some((t) => haystack.includes(t)) && !matches.some((m) => m.id === sound.id);
+    });
+    matches = matches.concat(dynamicCached);
+
+    // If still 0 matches, perform an async live query
+    if (matches.length === 0) {
+      searchResults.innerHTML = `<div class="search-loading" style="padding: 16px; text-align: center; color: var(--ink-faint); font: 12px 'DM Mono', monospace;">⚡ Searching live viral corridors for "${trimmed}"...</div>`;
+      try {
+        const liveTracks = await dynamicSoundEngine.fetchViralTracks(activeMoment || "all", "bold", trimmed);
+        if (thisSeq !== currentSearchSeq) return; // Stale query check
+        if (liveTracks && liveTracks.length) {
+          liveTracks.forEach((t) => {
+            if (!matches.some((m) => m.id === t.id)) matches.push(t);
+          });
+        }
+      } catch (err) {
+        console.warn("Dynamic search fetch error:", err);
+      }
+    }
+  }
+
+  if (thisSeq !== currentSearchSeq) return; // Stale query check
   searchResults.replaceChildren();
 
   if (!matches.length) {
-    searchResults.innerHTML = '<p class="search-empty">No matching sound found. Try searching for a language (Tamil, Punjabi, Malayalam), scene, or post type (outfit, wedding, travel).</p>';
+    searchResults.innerHTML = '<p class="search-empty">No matching sound found. Try searching for a language (Tamil, Punjabi, Malayalam), scene, or post type (gym, outfit, wedding, travel).</p>';
     return;
   }
 
-  matches.slice(0, 6).forEach((sound) => {
+  matches.slice(0, 8).forEach((sound) => {
     const row = document.createElement("div");
     row.className = "search-row";
+    const isPlaying = typeof audioEngine !== "undefined" && audioEngine.isPlaying && audioEngine.currentSoundId === sound.id;
+    if (isPlaying) row.classList.add("is-playing");
+
+    const isDynamic = sound.isDynamic || (sound.source === "dynamic");
     row.innerHTML = `
-      <span class="mini-art" style="--tone:var(--${sound.tone})"></span>
+      <span class="mini-art" style="--tone:var(--${sound.tone || "accent"})"></span>
       <div class="search-row-title">
-        <strong>${sound.title}</strong>
-        <small>${sound.artist} · ${sound.language} (${sound.scene})</small>
+        <strong>${sound.title} ${isDynamic ? '<span style="font-size:10px; color:var(--accent); font-weight:normal;">⚡ Live</span>' : ''}</strong>
+        <small>${sound.artist} · ${sound.language || "Indie"} (${sound.scene || "Regional"})</small>
       </div>
-      <span class="stage stage-${sound.stage.toLowerCase().replace(/\s+/g, "-")}">● ${sound.stage}</span>
-      <button class="search-view-btn" aria-label="View story for ${sound.title}">View ↗</button>
+      <span class="stage stage-${(sound.stage || "rising").toLowerCase().replace(/\s+/g, "-")}">● ${sound.stage || "Rising"}</span>
+      <div class="search-actions-wrap">
+        <button type="button" class="search-cue-btn ${isPlaying ? "is-playing" : ""}" aria-label="Cue preview for ${sound.title}">${isPlaying ? `■ 0:${String(audioEngine.remainingSeconds).padStart(2, "0")}` : "▶ Cue"}</button>
+        <button type="button" class="search-view-btn" aria-label="View story for ${sound.title}">View ↗</button>
+      </div>
     `;
 
-    row.querySelector(".search-view-btn").addEventListener("click", () => {
+    const cueBtn = row.querySelector(".search-cue-btn");
+    cueBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleHookCuePlay(sound, cueBtn, row);
+    });
+
+    const viewBtn = row.querySelector(".search-view-btn");
+    viewBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openSoundStory(sound);
+    });
+
+    row.addEventListener("click", (e) => {
+      if (e.target.closest(".search-cue-btn") || e.target.closest(".search-view-btn")) return;
       openSoundStory(sound);
     });
 
@@ -2708,6 +2947,10 @@ function searchSounds(query) {
 
 // 11. Initial Event Listeners
 document.addEventListener("DOMContentLoaded", () => {
+  if (typeof audioEngine !== "undefined" && audioEngine.setupMiniPlayer) {
+    audioEngine.setupMiniPlayer();
+  }
+
   // 1. Moment chips selection
   document.querySelectorAll(".chip").forEach((chip) => {
     chip.addEventListener("click", () => {
